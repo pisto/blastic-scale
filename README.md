@@ -15,8 +15,10 @@ You can download the latest release from the [Releases](https://github.com/pisto
 The firmware can be uploaded to the board with [`arduino-cli`](https://arduino.github.io/arduino-cli/1.0/installation/), using the following script:
 ```bash
 # from the project main directory
-./scripts/arduino-cli/upload.sh
+./scripts/arduino-cli/upload.sh [ blastic-scale.ino.bin file path ]
 ```
+
+If the file path is omitted, the upload scripts look into the build folder created by the [`compile.sh`](#compilation) script.
 
 As of now, wifi connection parameters and other essential configuration can be set on a serial command line interface. After uploading, use:
 ```bash
