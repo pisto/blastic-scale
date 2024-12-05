@@ -424,17 +424,17 @@ static void urn(WordSplit &args) {
 
 static void action(WordSplit &args) {
   auto actionStr = args.nextWord();
-  if (!actionStr) MSerial()->print("action: missing command argument\n");
+  if (!actionStr) MSerial()->print("submit::action: missing command argument\n");
   auto hash = util::murmur3_32(actionStr);
   for (auto action : Submitter::actions) {
     if (std::get<uint32_t>(action) != hash) continue;
     submitter().action(std::get<Submitter::Action>(action));
     MSerial serial;
-    serial->print("action: sent action ");
+    serial->print("submit::action: sent action ");
     serial->println(actionStr);
     return;
   }
-  MSerial()->print("action: action not found\n");
+  MSerial()->print("submit::action: action not found\n");
 }
 
 } // namespace submit
