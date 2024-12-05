@@ -34,7 +34,7 @@ Please note that there is a tight integration between the WiFi module of the Ard
 
 # Compilation
 
-The project currently can *only* be built with the `arduino-cli`. Unfortunately, the Arduino IDE does not allow changing compilation flags, which is necessary for the correct compilation of this project.
+The project can be built with the `arduino-cli`. Unfortunately, the Arduino IDE does not allow changing compilation flags, which is necessary for the correct compilation of this project.
 
 First install the [Arduino CLI](https://arduino.github.io/arduino-cli/1.0/installation/), then compile the project:
 ```bash
@@ -43,8 +43,6 @@ First install the [Arduino CLI](https://arduino.github.io/arduino-cli/1.0/instal
 ```
 
 ## PlatformIO build and development
-
-Build via [PlatformIO](https://platformio.org/) is supported but currently broken due to [missing up to date libraries in the PlatformIO registry](https://github.com/platformio/platform-renesas-ra/issues/25).
 
 We suggest developing on Visual Studio Code with the [PlatformIO plugin](https://platformio.org/install/ide?install=vscode).
 
