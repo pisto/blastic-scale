@@ -8,20 +8,51 @@
 
 namespace blastic {
 
-static Submitter &submitter();
+uint32_t debug = 0;
+Config config;
+
+static Submitter &submitter() {
+  static Submitter submitter("Submitter", configMAX_PRIORITIES / 2);
+  return submitter;
+}
 
 using SerialCliTask = cli::SerialCliTask<Serial, 4 * 1024>;
 static SerialCliTask &cliTask();
 
-uint32_t debug = 0;
+namespace buttons {
 
-Config config;
+void edgeCallback(size_t i, bool rising) {
+  // NB: this is run in an interrupt context, do not do anything heavyweight
+  if (!rising) return;
+  return submitter().action_ISR(std::get<Submitter::Action>(Submitter::actions[i + 1]));
+}
 
+} // namespace buttons
 } // namespace blastic
 
-/*
-  Namespace for all the serial cli functions.
-*/
+void setup() {
+  using namespace blastic;
+  Serial.begin(BLASTIC_MONITOR_SPEED);
+  while (!Serial);
+  Serial.print("setup: booting blastic-scale version ");
+  Serial.println(version);
+  switch (config.load()) {
+  case eeprom::IOret::UPGRADED:
+    Serial.print("setup: eeprom saved config converted from older version\n");
+  case eeprom::IOret::OK:
+    if (!config.sanitize()) Serial.print("setup: config had to be sanitized, eeprom is likely corrupted\n");
+    Serial.print("setup: loaded configuration from eeprom\n");
+    break;
+  default:
+    config.defaults();
+    Serial.print("setup: cannot load eeprom data, using defaults\n");
+    break;
+  }
+  submitter();
+  cliTask();
+  buttons::reset(config.buttons);
+  Serial.print("setup: done\n");
+}
 
 namespace cli {
 
@@ -486,48 +517,9 @@ static constexpr const CliCallback callbacks[]{makeCliCallback(version),
 
 namespace blastic {
 
-static Submitter &submitter() {
-  static Submitter submitter("Submitter", configMAX_PRIORITIES / 2);
-  return submitter;
-}
-
 static SerialCliTask &cliTask() {
   static SerialCliTask cliTask(cli::callbacks);
   return cliTask;
 }
 
-namespace buttons {
-
-void edgeCallback(size_t i, bool rising) {
-  // NB: this is run in an interrupt context, do not do anything heavyweight
-  if (!rising) return;
-  return submitter().action_ISR(std::get<Submitter::Action>(Submitter::actions[i + 1]));
-}
-
-} // namespace buttons
-
 } // namespace blastic
-
-void setup() {
-  using namespace blastic;
-  Serial.begin(BLASTIC_MONITOR_SPEED);
-  while (!Serial);
-  Serial.print("setup: booting blastic-scale version ");
-  Serial.println(version);
-  switch (config.load()) {
-  case eeprom::IOret::UPGRADED:
-    Serial.print("setup: eeprom saved config converted from older version (eeprom untouched)\n");
-  case eeprom::IOret::OK:
-    if (!config.sanitize()) Serial.print("setup: eeprom config had to be sanitized, eeprom is likely corrupted\n");
-    Serial.print("setup: loaded configuration from eeprom\n");
-    break;
-  default:
-    config.defaults();
-    Serial.print("setup: cannot load eeprom data, using defaults (eeprom untouched)\n");
-    break;
-  }
-  submitter();
-  cliTask();
-  buttons::reset(config.buttons);
-  Serial.print("setup: done\n");
-}
