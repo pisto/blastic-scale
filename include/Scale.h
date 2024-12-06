@@ -13,10 +13,10 @@ namespace scale {
 // HX711Mode can be cast to an integer and used as index in arrays below
 enum class HX711Mode : uint8_t { A128 = 0, B = 1, A64 = 2 };
 
-struct [[gnu::packed]] EEPROMConfig {
+struct Config {
   uint8_t dataPin, clockPin;
   HX711Mode mode;
-  struct [[gnu::packed]] calibration {
+  struct calibration {
     int32_t tareRawRead, weightRawRead;
     float weight;
     operator bool() const { return this->weightRawRead != this->tareRawRead; }
@@ -41,12 +41,12 @@ constexpr const uint32_t minReadDelayMillis = 1000 / 80; // max output rate is 8
   This function switches on and back off the controller. The execution is
   also protected by a global mutex.
 */
-int32_t raw(const EEPROMConfig &config, size_t medianWidth = 1, TickType_t timeout = portMAX_DELAY);
+int32_t raw(const Config &config, size_t medianWidth = 1, TickType_t timeout = portMAX_DELAY);
 
 /*
   As above, but return a computed weight using calibration data.
 */
-util::AnnotatedFloat weight(const EEPROMConfig &config, size_t medianWidth = 1, TickType_t timeout = portMAX_DELAY);
+util::AnnotatedFloat weight(const Config &config, size_t medianWidth = 1, TickType_t timeout = portMAX_DELAY);
 
 } // namespace scale
 

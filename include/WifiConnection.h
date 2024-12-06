@@ -20,13 +20,13 @@ class WifiConnection : public util::Mutexed<WiFi> {
 public:
   static const bool ipConnectBroken;
 
-  struct [[gnu::packed]] EEPROMConfig {
+  struct Config {
     // leave the password empty to connect to an open network
     char ssid[32], password[64];
-    unsigned long dhcpTimeout, disconnectTimeout;
+    uint8_t dhcpTimeout, disconnectTimeout;
   };
 
-  WifiConnection(const EEPROMConfig &config);
+  WifiConnection(const Config &config);
   // was the connection successful?
   operator bool() const;
   ~WifiConnection();

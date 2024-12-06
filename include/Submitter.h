@@ -53,7 +53,7 @@ public:
   static constexpr const std::tuple<uint32_t, Submitter::Action> actions[]{
       makeAction(NONE), makeAction(OK), makeAction(NEXT), makeAction(PREVIOUS), makeAction(BACK)};
 
-  struct [[gnu::packed]] EEPROMConfig {
+  struct Config {
     float threshold;
     char collectionPoint[128], collectorName[128];
     struct FormParameters {

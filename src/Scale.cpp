@@ -9,7 +9,7 @@ namespace scale {
 static StaticSemaphore_t mutexBuffer;
 static SemaphoreHandle_t mutex = xSemaphoreCreateMutexStatic(&mutexBuffer);
 
-int32_t raw(const EEPROMConfig &config, size_t medianWidth, TickType_t timeout) {
+int32_t raw(const Config &config, size_t medianWidth, TickType_t timeout) {
   configASSERT(medianWidth);
   auto startTick = xTaskGetTickCount();
   if (!xSemaphoreTake(mutex, timeout)) return readErr;
@@ -85,7 +85,7 @@ int32_t raw(const EEPROMConfig &config, size_t medianWidth, TickType_t timeout) 
   return (reads[medianWidth / 2 - 1] + reads[medianWidth / 2]) / 2;
 }
 
-util::AnnotatedFloat weight(const EEPROMConfig &config, size_t medianWidth, TickType_t timeout) {
+util::AnnotatedFloat weight(const Config &config, size_t medianWidth, TickType_t timeout) {
   auto calibration = config.getCalibration();
   if (!calibration) return weightCal;
   auto value = raw(config, medianWidth, timeout);

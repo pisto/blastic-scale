@@ -1,6 +1,8 @@
+#include <cm_backtrace/cm_backtrace.h>
 #include <Arduino.h>
 #include <Arduino_FreeRTOS.h>
 #include "StaticTask.h"
+#include "Mutexed.h"
 
 #if configSUPPORT_STATIC_ALLOCATION == 1
 
@@ -77,6 +79,69 @@ extern "C" void *__wrap__malloc_r(struct _reent *r, size_t s) {
 }
 
 #endif
+
+
+/*
+  Hook failed assert to a Serial print, then throw a stack trace every 10 seconds.
+*/
+
+constexpr const int assertSleepMillis = 10000;
+
+static void _assert_func_freertos(const char *file, int line, const char *failedExpression,
+                                  const uint32_t (&stackTrace)[CMB_CALL_STACK_MAX_DEPTH], size_t stackDepth)
+    [[noreturn]] {
+  vTaskPrioritySet(nullptr, tskIDLE_PRIORITY + 1);
+  while (true) {
+    {
+      util::Mutexed<::Serial> serial;
+      if (!*serial) serial->begin(BLASTIC_MONITOR_SPEED);
+      while (!*serial);
+      serial->print("assert: ");
+      serial->print(file);
+      serial->print(':');
+      serial->print(line);
+      serial->print(" failed expression ");
+      serial->println(failedExpression);
+      serial->print("assert: addr2line -e $FIRMWARE_FILE -a -f -C ");
+      for (int i = 0; i < stackDepth; i++) {
+        serial->print(' ');
+        serial->print(stackTrace[i], 16);
+      }
+      serial->println();
+    }
+    vTaskDelay(pdMS_TO_TICKS(assertSleepMillis));
+  }
+}
+
+static void _assert_func_arduino(const char *file, int line, const char *failedExpression,
+                                 const uint32_t (&stackTrace)[CMB_CALL_STACK_MAX_DEPTH], size_t stackDepth)
+    [[noreturn]] {
+  if (!Serial) Serial.begin(BLASTIC_MONITOR_SPEED);
+  while (!Serial);
+  while (true) {
+    Serial.print("assert: ");
+    Serial.print(file);
+    Serial.print(':');
+    Serial.print(line);
+    Serial.print(" failed expression ");
+    Serial.println(failedExpression);
+    Serial.print("assert: addr2line -e $FIRMWARE_FILE -a -f -C ");
+    for (int i = 0; i < stackDepth; i++) {
+      Serial.print(' ');
+      Serial.print(stackTrace[i], 16);
+    }
+    Serial.println();
+    delay(assertSleepMillis);
+  }
+}
+
+// this is a weak function in the Arduino framework so we just need to declare it here without the -Wl,--wrap trick
+extern "C" void __assert_func(const char *file, int line, const char *, const char *failedExpression) [[noreturn]] {
+  uint32_t stackTrace[CMB_CALL_STACK_MAX_DEPTH] = {0};
+  size_t stackDepth = cm_backtrace_call_stack(stackTrace, CMB_CALL_STACK_MAX_DEPTH, cmb_get_sp());
+  (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING ? _assert_func_freertos : _assert_func_arduino)(
+      file, line, failedExpression, stackTrace, stackDepth);
+}
 
 void loop() [[noreturn]] {
   Serial.print("setup: starting FreeRTOS scheduler\n");

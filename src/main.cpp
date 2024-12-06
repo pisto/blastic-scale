@@ -1,47 +1,12 @@
 #include <iterator>
-#include <cm_backtrace/cm_backtrace.h>
+#include <base64.hpp>
+#include "DataFlashBlockDevice.h"
 #include "blastic.h"
 #include "SerialCliTask.h"
 #include "Submitter.h"
 #include "utils.h"
 
 namespace blastic {
-
-// initialize configuration with sane defaults
-EEPROMConfig config = {
-    .scale = {.dataPin = 5,
-              .clockPin = 4,
-              .mode = scale::HX711Mode::A128,
-              .calibrations = {{.tareRawRead = 45527,
-                                .weightRawRead = 114810,
-                                .weight = 1.56}, // works for me, but not for thee
-                               {.tareRawRead = 0, .weightRawRead = 0, .weight = 0.f},
-                               {.tareRawRead = 0, .weightRawRead = 0, .weight = 0.f}}},
-    // XXX GCC bug, cannot use initializer lists with strings
-    .wifi = WifiConnection::EEPROMConfig{"", "", 10, 10},
-    .submit =
-        Submitter::EEPROMConfig{
-            0.05, "", "",
-            Submitter::EEPROMConfig::FormParameters{
-                "docs.google.com/forms/d/e/1FAIpQLSeI3jofIWqtWghblVPOTO1BtUbE8KmoJsGRJuRAu2ceEMIJFw/formResponse",
-                "entry.826036805", "entry.458823532", "entry.649832752", "entry.1219969504"}},
-    .buttons = {
-        {{.pin = 3,
-          .threshold = 10000,
-          .settings =
-              {.div = CTSU_CLOCK_DIV_16, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 152, .count = 1}},
-         {.pin = 8,
-          .threshold = 10000,
-          .settings =
-              {.div = CTSU_CLOCK_DIV_16, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 202, .count = 1}},
-         {.pin = 2,
-          .threshold = 10000,
-          .settings =
-              {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 154, .count = 1}},
-         {.pin = 6,
-          .threshold = 10000,
-          .settings = {
-              .div = CTSU_CLOCK_DIV_16, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 282, .count = 1}}}}};
 
 static Submitter &submitter();
 
@@ -118,7 +83,7 @@ static void mode(WordSplit &args) {
 static void tare(WordSplit &) {
   auto value = raw(config.scale, scaleCliMaxMedianWidth, pdMS_TO_TICKS(scaleCliTimeout));
   if (value == readErr) {
-    MSerial()->print("failed to get measurements for tare\n");
+    MSerial()->print("scale::tare: failed to get measurements for tare\n");
     return;
   }
   auto &calibration = config.scale.getCalibration();
@@ -439,6 +404,55 @@ static void action(WordSplit &args) {
 
 } // namespace submit
 
+namespace eeprom {
+
+static void save(WordSplit &) {
+  auto result = config.save();
+  MSerial serial;
+  serial->print("eeprom::save: ");
+  if (result == blastic::eeprom::IOret::OK) {
+    serial->print("ok ");
+    serial->print(sizeof(config));
+    serial->print(" bytes\n");
+  } else serial->print("error\n");
+}
+
+static void export_(WordSplit &) {
+  auto inputLen = blastic::eeprom::maxConfigLength, base64Length = (inputLen + 2 - ((inputLen + 2) % 3)) / 3 * 4 + 1;
+  assert(base64Length == encode_base64_length(inputLen) + 1);
+  unsigned char input[inputLen], base64[base64Length];
+  auto &flash = DataFlashBlockDevice::getInstance();
+  if (flash.read(input, 0, inputLen)) {
+    MSerial()->print("eeprom::export: read error\n");
+    return;
+  }
+  encode_base64(input, inputLen, base64);
+  MSerial()->println(reinterpret_cast<char *>(base64));
+}
+
+static void defaults(WordSplit &args) {
+  auto result = config.defaults.save();
+  MSerial serial;
+  serial->print("eeprom::defaults: ");
+  if (result == blastic::eeprom::IOret::OK) {
+    serial->print("ok ");
+    serial->print(sizeof(config.defaults));
+    serial->print(" bytes\n");
+  } else serial->print("error\n");
+}
+
+static void blank(WordSplit &args) {
+  auto &flash = DataFlashBlockDevice::getInstance();
+  if(!flash.erase(0, blastic::eeprom::maxConfigLength)) {
+    MSerial serial;
+    serial->print("eeprom::blank: ok ");
+    serial->print(blastic::eeprom::maxConfigLength);
+    serial->print(" bytes\n");
+  } else MSerial()->print("eeprom::blank: error\n");
+}
+
+} // namespace eeprom
+
 static constexpr const CliCallback callbacks[]{makeCliCallback(version),
                                                makeCliCallback(uptime),
                                                makeCliCallback(debug),
@@ -458,6 +472,10 @@ static constexpr const CliCallback callbacks[]{makeCliCallback(version),
                                                makeCliCallback(submit::collectorName),
                                                makeCliCallback(submit::urn),
                                                makeCliCallback(submit::action),
+                                               makeCliCallback(eeprom::save),
+                                               CliCallback("eeprom::export", eeprom::export_),
+                                               makeCliCallback(eeprom::defaults),
+                                               makeCliCallback(eeprom::blank),
                                                CliCallback()};
 
 } // namespace cli
@@ -492,72 +510,17 @@ void setup() {
   while (!Serial);
   Serial.print("setup: booting blastic-scale version ");
   Serial.println(version);
+  switch (config.load()) {
+  case eeprom::IOret::UPGRADED:
+    Serial.print("setup: eeprom saved config converted from older version (eeprom untouched)\n");
+  case eeprom::IOret::OK: Serial.print("setup: loaded configuration from eeprom\n"); break;
+  default:
+    config = config.defaults;
+    Serial.print("setup: cannot load eeprom data, using defaults (eeprom untouched)\n");
+    break;
+  }
   submitter();
   cliTask();
   buttons::reset(config.buttons);
   Serial.print("setup: done\n");
-}
-
-/*
-  Hook failed assert to a Serial print, then throw a stack trace every 10 seconds.
-*/
-
-constexpr const int assertSleepMillis = 10000;
-
-static void _assert_func_freertos(const char *file, int line, const char *failedExpression,
-                                  const uint32_t (&stackTrace)[CMB_CALL_STACK_MAX_DEPTH], size_t stackDepth)
-    [[noreturn]] {
-  using namespace blastic;
-  vTaskPrioritySet(nullptr, tskIDLE_PRIORITY + 1);
-  while (true) {
-    {
-      MSerial serial;
-      if (!*serial) serial->begin(BLASTIC_MONITOR_SPEED);
-      while (!*serial);
-      serial->print("assert: ");
-      serial->print(file);
-      serial->print(':');
-      serial->print(line);
-      serial->print(" failed expression ");
-      serial->println(failedExpression);
-      serial->print("assert: addr2line -e $FIRMWARE_FILE -a -f -C ");
-      for (int i = 0; i < stackDepth; i++) {
-        serial->print(' ');
-        serial->print(stackTrace[i], 16);
-      }
-      serial->println();
-    }
-    vTaskDelay(pdMS_TO_TICKS(assertSleepMillis));
-  }
-}
-
-static void _assert_func_arduino(const char *file, int line, const char *failedExpression,
-                                 const uint32_t (&stackTrace)[CMB_CALL_STACK_MAX_DEPTH], size_t stackDepth)
-    [[noreturn]] {
-  if (!Serial) Serial.begin(BLASTIC_MONITOR_SPEED);
-  while (!Serial);
-  while (true) {
-    Serial.print("assert: ");
-    Serial.print(file);
-    Serial.print(':');
-    Serial.print(line);
-    Serial.print(" failed expression ");
-    Serial.println(failedExpression);
-    Serial.print("assert: addr2line -e $FIRMWARE_FILE -a -f -C ");
-    for (int i = 0; i < stackDepth; i++) {
-      Serial.print(' ');
-      Serial.print(stackTrace[i], 16);
-    }
-    Serial.println();
-    delay(assertSleepMillis);
-  }
-}
-
-// this is a weak function in the Arduino framework so we just need to declare it here without the -Wl,--wrap trick
-extern "C" void __assert_func(const char *file, int line, const char *, const char *failedExpression)
-    [[noreturn]] {
-  uint32_t stackTrace[CMB_CALL_STACK_MAX_DEPTH] = {0};
-  size_t stackDepth = cm_backtrace_call_stack(stackTrace, CMB_CALL_STACK_MAX_DEPTH, cmb_get_sp());
-  (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING ? _assert_func_freertos : _assert_func_arduino)(
-      file, line, failedExpression, stackTrace, stackDepth);
 }

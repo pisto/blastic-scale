@@ -16,7 +16,7 @@ namespace blastic {
 
 class DebouncedTouchSensor : public TouchSensor {
 public:
-  struct [[gnu::packed]] EEPROMConfig {
+  struct Config {
     uint8_t pin;
     uint16_t threshold;
     ctsu_pin_settings_t settings;
@@ -40,12 +40,12 @@ constexpr const size_t n = 4;
 
 extern DebouncedTouchSensor sensors[n];
 
-using EEPROMConfig = std::array<DebouncedTouchSensor::EEPROMConfig, n>;
+using Config = std::array<DebouncedTouchSensor::Config, n>;
 
 /*
   Reinitialize the R4_Touch library with a new configuration.
 */
-void reset(const EEPROMConfig &config);
+void reset(const Config &config);
 
 /*
   This is implemented in src/main.cpp, and hooks the edge callbacks (that runs in an interrupt context) to the Submitter

@@ -31,7 +31,7 @@ namespace buttons {
 
 DebouncedTouchSensor sensors[n];
 
-void reset(const EEPROMConfig &configs) {
+void reset(const Config &configs) {
   static StaticTimer_t timerBuff;
   // this timer makes sure that we are measuring the capacitors every 50ms at least
   static TimerHandle_t timer = xTimerCreateStatic(

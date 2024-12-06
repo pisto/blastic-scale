@@ -7,7 +7,7 @@ const bool WifiConnection::ipConnectBroken = strcmp(WIFI_FIRMWARE_LATEST_VERSION
 
 // these variables must be accessed while holding the MWifi/WifiConnection mutex
 static struct {
-  uint32_t disconnectTimeout = 0;
+  uint8_t disconnectTimeout = 0;
   int endTime = 0;
 } wifiReaper;
 
@@ -35,7 +35,7 @@ static void wifiReaperLoop() [[noreturn]] {
   }
 }
 
-WifiConnection::WifiConnection(const EEPROMConfig &config) : util::Mutexed<WiFi>() {
+WifiConnection::WifiConnection(const Config &config) : util::Mutexed<WiFi>() {
   constexpr const uint32_t dhcpPollInterval = 100;
   auto &wifi = *this;
   configASSERT(!strcmp(wifi->firmwareVersion(), WIFI_FIRMWARE_LATEST_VERSION));
