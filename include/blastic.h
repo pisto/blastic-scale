@@ -42,11 +42,10 @@ template <> struct Config<Header::currentVersion> {
   blastic::Submitter::Config submit;
   buttons::Config buttons;
 
-  void sanitize();
-  static const Config defaults;
-
   IOret load();
   IOret save() const;
+  bool sanitize();
+  void defaults();
 };
 
 extern const uint32_t maxConfigLength;

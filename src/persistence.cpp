@@ -2,51 +2,11 @@
 #include <variant>
 #include "DataFlashBlockDevice.h"
 #include "blastic.h"
+#include "murmur32.h"
 
 namespace blastic {
 
-Config config;
-
-const Config Config::defaults{
-    .header = {.signature = Header::expectedSignature, .version = Header::currentVersion},
-    .scale = {.dataPin = 5,
-              .clockPin = 4,
-              .mode = scale::HX711Mode::A128,
-              .calibrations = {{.tareRawRead = 45527,
-                                .weightRawRead = 114810,
-                                .weight = 1.56}, // works for me, but not for thee
-                               {.tareRawRead = 0, .weightRawRead = 0, .weight = 0.f},
-                               {.tareRawRead = 0, .weightRawRead = 0, .weight = 0.f}}},
-    // XXX GCC bug, cannot use initializer lists with strings
-    .wifi = WifiConnection::Config{"", "", 10, 10},
-    .submit =
-        Submitter::Config{
-            0.05, "", "",
-            Submitter::Config::FormParameters{
-                "docs.google.com/forms/d/e/1FAIpQLSeI3jofIWqtWghblVPOTO1BtUbE8KmoJsGRJuRAu2ceEMIJFw/formResponse",
-                "entry.826036805", "entry.458823532", "entry.649832752", "entry.1219969504"}},
-    .buttons = {
-        {{.pin = 3,
-          .threshold = 10000,
-          .settings =
-              {.div = CTSU_CLOCK_DIV_16, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 152, .count = 1}},
-         {.pin = 8,
-          .threshold = 10000,
-          .settings =
-              {.div = CTSU_CLOCK_DIV_16, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 202, .count = 1}},
-         {.pin = 2,
-          .threshold = 10000,
-          .settings =
-              {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 154, .count = 1}},
-         {.pin = 6,
-          .threshold = 10000,
-          .settings = {
-              .div = CTSU_CLOCK_DIV_16, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 282, .count = 1}}}}};
-
 namespace eeprom {
-
-static_assert(std::is_pod_v<Config<>>);
-static_assert(sizeof(Config<>) <= FLASH_TOTAL_SIZE);
 
 /*
 
@@ -88,6 +48,7 @@ template <uint32_t version> constexpr uint32_t getVersion(const Config<version> 
 template <uint32_t version = Header::currentVersion> ConfigVariant readConfigVariant(uint32_t eepromVersion) {
   if (version == eepromVersion) {
     Config<version> config;
+    static_assert(std::is_pod_v<Config<version>>);
     auto &flash = DataFlashBlockDevice::getInstance();
     if (flash.read(&config, 0, sizeof(config))) return {};
     return config;
@@ -96,15 +57,11 @@ template <uint32_t version = Header::currentVersion> ConfigVariant readConfigVar
   else return {};
 }
 
-template <typename T, size_t len> inline void sanitizeStrBuffer(T (&str)[len]) {
-  static_assert(len > 0);
-  str[strnlen(str, len - 1)] = '\0';
-}
-
-void sanitizeStrBuffers() {}
-template <typename T1, typename... Rest> inline void sanitizeStrBuffers(T1 &&t, Rest &&...r) {
-  sanitizeStrBuffer(t);
-  sanitizeStrBuffers(std::forward<Rest>(r)...);
+void sanitizeStringBuffers() {}
+template <size_t size, typename... Rest>
+inline void sanitizeStringBuffers(util::StringBuffer<size> &str, Rest &&...rest) {
+  *(str.rbegin()) = '\0';
+  sanitizeStringBuffers(std::forward<Rest>(rest)...);
 }
 
 template <uint32_t version = Header::currentVersion> constexpr size_t getMaxConfigLength(size_t max = 0) {
@@ -113,9 +70,48 @@ template <uint32_t version = Header::currentVersion> constexpr size_t getMaxConf
   else return maxConfigLength<version - 1>(max > size ? max : size);
 }
 
+static_assert(getMaxConfigLength() <= FLASH_TOTAL_SIZE);
+
 } // namespace
 
 const uint32_t maxConfigLength = getMaxConfigLength();
+
+void Config<>::defaults() {
+  memset(this, 0, sizeof(*this));
+  header = {.signature = eeprom::Header::expectedSignature, .version = eeprom::Header::currentVersion};
+  scale = {.dataPin = 5,
+           .clockPin = 4,
+           .mode = scale::HX711Mode::A128,
+           .calibrations = {// A128 mode by default, calibration parameters that work for me, but not for thee
+                            {.tareRawRead = 45527, .weightRawRead = 114810, .weight = 1.56}}};
+  wifi.dhcpTimeout = wifi.disconnectTimeout = 10;
+  submit.threshold = 0.05,
+  submit.form.urn = "docs.google.com/forms/d/e/1FAIpQLSeI3jofIWqtWghblVPOTO1BtUbE8KmoJsGRJuRAu2ceEMIJFw/formResponse";
+  submit.form.type = "entry.826036805";
+  submit.form.collectionPoint = "entry.458823532";
+  submit.form.collectorName = "entry.649832752";
+  submit.form.weight = "entry.1219969504";
+  // OK
+  buttons[0] = {
+      .pin = 3,
+      .threshold = 10000,
+      .settings = {.div = CTSU_CLOCK_DIV_16, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 152, .count = 1}};
+  // NEXT
+  buttons[1] = {
+      .pin = 8,
+      .threshold = 10000,
+      .settings = {.div = CTSU_CLOCK_DIV_16, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 202, .count = 1}};
+  // PREVIOUS
+  buttons[2] = {
+      .pin = 2,
+      .threshold = 10000,
+      .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 154, .count = 1}};
+  // BACK
+  buttons[3] = {
+      .pin = 6,
+      .threshold = 10000,
+      .settings = {.div = CTSU_CLOCK_DIV_16, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 282, .count = 1}};
+};
 
 IOret Config<>::load() {
   auto &flash = DataFlashBlockDevice::getInstance();
@@ -127,29 +123,29 @@ IOret Config<>::load() {
   if (configVariant.valueless_by_exception()) return IOret::ERROR;
   while (configVariant.index() < std::variant_size_v<ConfigVariant> - 1)
     configVariant = std::visit([](auto &&configOldVersion) { return upgradeOnce(configOldVersion); }, configVariant);
-  auto &loaded = std::get<Config<>>(configVariant);
-  loaded.sanitize();
-  *this = loaded;
+  *this = std::get<eeprom::Config<>>(configVariant);
+  header = {.signature = Header::expectedSignature, .version = Header::currentVersion};
   return eepromHeader.version < header.version ? IOret::UPGRADED : IOret::OK;
 }
 
-void Config<>::sanitize() {
-  header.signature = Header::expectedSignature;
-  header.version = Header::currentVersion;
+bool Config<>::sanitize() {
+  Config d;
+  d.defaults();
+  auto hashPreSanitize = util::murmur3_32(*this);
   // weak sanitization, just make sure we don't get UB (enums out of range, strings without terminators...)
-  auto &def = Config::defaults;
-  if (uint8_t(scale.mode) > uint8_t(scale::HX711Mode::A64)) scale.mode = def.scale.mode;
+  if (uint8_t(scale.mode) > uint8_t(scale::HX711Mode::A64)) scale.mode = d.scale.mode;
   for (auto &cal : scale.calibrations)
     if (!isfinite(cal.weight)) cal.weight = 0;
-  if (!isfinite(submit.threshold) || submit.threshold < 0) submit.threshold = def.submit.threshold;
-  for (auto &button : buttons) {
-    if (uint32_t(button.settings.div) > uint32_t(CTSU_CLOCK_DIV_64)) button.settings.div = def.buttons[0].settings.div;
-    if (uint32_t(button.settings.gain) > uint32_t(CTSU_ICO_GAIN_40))
-      button.settings.gain = def.buttons[0].settings.gain;
+  if (!isfinite(submit.threshold) || submit.threshold < 0) submit.threshold = d.submit.threshold;
+  for (int i = 0; i < size(buttons); i++) {
+    auto &defaultButton = d.buttons[i], &button = buttons[i];
+    if (uint32_t(button.settings.div) > uint32_t(CTSU_CLOCK_DIV_64)) button.settings.div = defaultButton.settings.div;
+    if (uint32_t(button.settings.gain) > uint32_t(CTSU_ICO_GAIN_40)) button.settings.gain = defaultButton.settings.gain;
   }
-  sanitizeStrBuffers(wifi.ssid, wifi.password, submit.collectionPoint, submit.collectionPoint, submit.collectorName,
-                     submit.form.collectionPoint, submit.form.collectorName, submit.form.type, submit.form.urn,
-                     submit.form.weight);
+  sanitizeStringBuffers(wifi.ssid, wifi.password, submit.collectionPoint, submit.collectionPoint, submit.collectorName,
+                        submit.form.collectionPoint, submit.form.collectorName, submit.form.type, submit.form.urn,
+                        submit.form.weight);
+  return hashPreSanitize == util::murmur3_32(*this);
 }
 
 IOret Config<>::save() const {

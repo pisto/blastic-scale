@@ -15,6 +15,8 @@ static SerialCliTask &cliTask();
 
 uint32_t debug = 0;
 
+Config config;
+
 } // namespace blastic
 
 /*
@@ -157,11 +159,11 @@ namespace wifi {
 
 static void status(WordSplit &) {
   uint8_t status;
-  char firmwareVersion[12];
+  util::StringBuffer<12> firmwareVersion;
   {
     MWiFi wifi;
     status = wifi->status();
-    strcpy0(firmwareVersion, wifi->firmwareVersion());
+    firmwareVersion = wifi->firmwareVersion();
   }
   MSerial serial;
   serial->print("wifi::status: status ");
@@ -184,12 +186,12 @@ static void timeout(WordSplit &args) {
 static void ssid(WordSplit &args) {
   auto ssid = args.rest(true, true);
   if (ssid) {
-    strcpy0(config.wifi.ssid, ssid);
+    config.wifi.ssid = ssid;
     memset(config.wifi.password, 0, sizeof(config.wifi.password));
   }
   MSerial serial;
   serial->print("wifi::ssid: ");
-  if (strlen(config.wifi.ssid)) {
+  if (std::strlen(config.wifi.ssid)) {
     serial->print('\'');
     serial->print(config.wifi.ssid);
     serial->print("\'\n");
@@ -197,10 +199,10 @@ static void ssid(WordSplit &args) {
 }
 
 static void password(WordSplit &args) {
-  if (auto password = args.rest(false, false)) strcpy0(config.wifi.password, password);
+  if (auto password = args.rest(false, false)) config.wifi.password = password;
   MSerial serial;
   serial->print("wifi::password: ");
-  if (strlen(config.wifi.password)) {
+  if (std::strlen(config.wifi.password)) {
     serial->print('\'');
     serial->print(config.wifi.password);
     serial->print("\'\n");
@@ -215,7 +217,7 @@ static void connect(WordSplit &) {
       return;
     }
   }
-  if (!strlen(config.wifi.ssid)) {
+  if (!std::strlen(config.wifi.ssid)) {
     MSerial()->print("wifi::connect: configure the connection first with wifi::ssid\n");
     return;
   }
@@ -350,10 +352,10 @@ static void threshold(WordSplit &args) {
 }
 
 static void collectionPoint(WordSplit &args) {
-  if (auto collectionPoint = args.rest()) strcpy0(config.submit.collectionPoint, collectionPoint);
+  if (auto collectionPoint = args.rest()) config.submit.collectionPoint = collectionPoint;
   MSerial serial;
   serial->print("submit::collectionPoint: ");
-  if (strlen(config.submit.collectionPoint)) {
+  if (std::strlen(config.submit.collectionPoint)) {
     serial->print('\'');
     serial->print(config.submit.collectionPoint);
     serial->print("\'\n");
@@ -361,10 +363,10 @@ static void collectionPoint(WordSplit &args) {
 }
 
 static void collectorName(WordSplit &args) {
-  if (auto collectorName = args.rest()) strcpy0(config.submit.collectorName, collectorName);
+  if (auto collectorName = args.rest()) config.submit.collectorName = collectorName;
   MSerial serial;
   serial->print("submit::collectorName: ");
-  if (strlen(config.submit.collectorName)) {
+  if (std::strlen(config.submit.collectorName)) {
     serial->print('\'');
     serial->print(config.submit.collectorName);
     serial->print("\'\n");
@@ -381,7 +383,7 @@ static void urn(WordSplit &args) {
     MSerial()->print("submit::urn: specify the urn argument without http:// or https://\n");
     return;
   }
-  strcpy0(config.submit.collectionPoint, urn);
+  config.submit.collectionPoint = urn;
   MSerial serial;
   serial->print("submit::urn: collection point ");
   serial->println(config.submit.form.urn);
@@ -431,19 +433,21 @@ static void export_(WordSplit &) {
 }
 
 static void defaults(WordSplit &args) {
-  auto result = config.defaults.save();
+  Config d;
+  d.defaults();
+  auto result = d.save();
   MSerial serial;
   serial->print("eeprom::defaults: ");
   if (result == blastic::eeprom::IOret::OK) {
     serial->print("ok ");
-    serial->print(sizeof(config.defaults));
+    serial->print(sizeof(d));
     serial->print(" bytes\n");
   } else serial->print("error\n");
 }
 
 static void blank(WordSplit &args) {
   auto &flash = DataFlashBlockDevice::getInstance();
-  if(!flash.erase(0, blastic::eeprom::maxConfigLength)) {
+  if (!flash.erase(0, blastic::eeprom::maxConfigLength)) {
     MSerial serial;
     serial->print("eeprom::blank: ok ");
     serial->print(blastic::eeprom::maxConfigLength);
@@ -513,9 +517,12 @@ void setup() {
   switch (config.load()) {
   case eeprom::IOret::UPGRADED:
     Serial.print("setup: eeprom saved config converted from older version (eeprom untouched)\n");
-  case eeprom::IOret::OK: Serial.print("setup: loaded configuration from eeprom\n"); break;
+  case eeprom::IOret::OK:
+    if (!config.sanitize()) Serial.print("setup: eeprom config had to be sanitized, eeprom is likely corrupted\n");
+    Serial.print("setup: loaded configuration from eeprom\n");
+    break;
   default:
-    config = config.defaults;
+    config.defaults();
     Serial.print("setup: cannot load eeprom data, using defaults (eeprom untouched)\n");
     break;
   }

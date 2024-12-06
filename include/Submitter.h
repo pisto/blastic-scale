@@ -55,9 +55,11 @@ public:
 
   struct Config {
     float threshold;
-    char collectionPoint[128], collectorName[128];
+    util::StringBuffer<128> collectionPoint, collectorName;
     struct FormParameters {
-      char urn[128], type[32], collectionPoint[32], collectorName[32], weight[32];
+      util::StringBuffer<128> urn;
+      using Param = util::StringBuffer<32>;
+      Param type, collectionPoint, collectorName, weight;
     } form;
   };
 
