@@ -46,22 +46,17 @@ const Config Config::defaults{
 namespace eeprom {
 
 static_assert(std::is_pod_v<Config<>>);
+static_assert(sizeof(Config<>) <= FLASH_TOTAL_SIZE);
 
-template <uint32_t versionTo> Config<versionTo> upgrade(const Config<versionTo - 1> &o);
-template <uint32_t versionTo, uint32_t versionFrom> Config<versionTo> upgrade(const Config<versionFrom> &o) {
-  static_assert(versionTo >= versionFrom);
-  if constexpr (versionFrom == versionTo) return o;
-  else return upgrade<versionTo>(upgrade<versionTo - 1>(o));
-}
-
-namespace details {
+namespace {
 
 template <uint32_t... versions> auto makeConfigVariant(std::integer_sequence<uint32_t, versions...>) {
   return std::variant<Config<versions>...>{};
 }
 
-using ConfigVariant =
-    decltype(details::makeConfigVariant(std::make_integer_sequence<uint32_t, Header::currentVersion + 1>{}));
+using ConfigVariant = decltype(makeConfigVariant(std::make_integer_sequence<uint32_t, Header::currentVersion + 1>{}));
+
+template <uint32_t version> constexpr uint32_t getVersion(const Config<version> &c) { return version; }
 
 template <uint32_t version = Header::currentVersion> ConfigVariant readConfigVariant(uint32_t eepromVersion) {
   if (version == eepromVersion) {
@@ -85,29 +80,55 @@ template <typename T1, typename... Rest> inline void sanitizeStrBuffers(T1 &&t, 
   sanitizeStrBuffers(std::forward<Rest>(r)...);
 }
 
-template <uint32_t version = Header::currentVersion> constexpr size_t maxConfigLength(size_t max = 0) {
+template <uint32_t version = Header::currentVersion> constexpr size_t getMaxConfigLength(size_t max = 0) {
   size_t size = sizeof(Config<version>);
   if constexpr (!version) return max > size ? max : size;
   else return maxConfigLength<version - 1>(max > size ? max : size);
 }
 
-} // namespace details
+} // namespace
 
-const uint32_t maxConfigLength = details::maxConfigLength();
+/*
+
+  Place here specializations of template struct Config to record older Config versions
+
+template <> struct Config<someVersion> {
+  Header header;
+  // old configuration fields [...]
+};
+
+  Then place a specialization of template function upgradeOnce, that takes a Config<someVersion>
+  reference and returns a Config<someVersion + 1> object, with a reasonable conversion logic.
+
+*/
+
+template <uint32_t version> auto upgradeOnce(const Config<version> &o);
+template <> auto upgradeOnce(const Config<Header::currentVersion> &o) {
+  assert(false && "Config upgradeOnce function called on the current version");
+  return o;
+}
+
+const uint32_t maxConfigLength = getMaxConfigLength();
 
 IOret Config<>::load() {
   auto &flash = DataFlashBlockDevice::getInstance();
-  if (flash.read(&header, 0, sizeof(header)) != FSP_SUCCESS) return IOret::ERROR;
-  if (header.signature != header.expectedSignature) return IOret::NOT_FOUND;
-  if (header.version > Header::currentVersion) return IOret::UNKONWN_VERSION;
-  auto configVariant = details::readConfigVariant(header.version);
+  Header eepromHeader;
+  if (flash.read(&eepromHeader, 0, sizeof(eepromHeader)) != FSP_SUCCESS) return IOret::ERROR;
+  if (eepromHeader.signature != Header::expectedSignature) return IOret::NOT_FOUND;
+  if (eepromHeader.version > Header::currentVersion) return IOret::UNKONWN_VERSION;
+  auto configVariant = readConfigVariant(eepromHeader.version);
   if (configVariant.valueless_by_exception()) return IOret::ERROR;
-  *this = std::visit([](auto &&configOldVersion) { return upgrade<Header::currentVersion>(configOldVersion); }, configVariant);
-  sanitize();
-  return header.version == Header::currentVersion ? IOret::OK : IOret::UPGRADED;
+  while (configVariant.index() < std::variant_size_v<ConfigVariant> - 1)
+    configVariant = std::visit([](auto &&configOldVersion) { return upgradeOnce(configOldVersion); }, configVariant);
+  auto &loaded = std::get<Config<>>(configVariant);
+  loaded.sanitize();
+  *this = loaded;
+  return eepromHeader.version == Header::currentVersion ? IOret::OK : IOret::UPGRADED;
 }
 
 void Config<>::sanitize() {
+  header.signature = Header::expectedSignature;
+  header.version = Header::currentVersion;
   // weak sanitization, just make sure we don't get UB (enums out of range, strings without terminators...)
   auto &def = Config::defaults;
   if (uint8_t(scale.mode) > uint8_t(scale::HX711Mode::A64)) scale.mode = def.scale.mode;
@@ -119,13 +140,12 @@ void Config<>::sanitize() {
     if (uint32_t(button.settings.gain) > uint32_t(CTSU_ICO_GAIN_40))
       button.settings.gain = def.buttons[0].settings.gain;
   }
-  details::sanitizeStrBuffers(wifi.ssid, wifi.password, submit.collectionPoint, submit.collectionPoint,
-                              submit.collectorName, submit.form.collectionPoint, submit.form.collectorName,
-                              submit.form.type, submit.form.urn, submit.form.weight);
+  sanitizeStrBuffers(wifi.ssid, wifi.password, submit.collectionPoint, submit.collectionPoint, submit.collectorName,
+                     submit.form.collectionPoint, submit.form.collectorName, submit.form.type, submit.form.urn,
+                     submit.form.weight);
 }
 
 IOret Config<>::save() const {
-  static_assert(sizeof(*this) <= FLASH_TOTAL_SIZE);
   auto &flash = DataFlashBlockDevice::getInstance();
   return !flash.erase(0, sizeof(*this)) && !flash.program(this, 0, sizeof(*this)) ? IOret::OK : IOret::ERROR;
 }
