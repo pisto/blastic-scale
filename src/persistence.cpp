@@ -48,6 +48,33 @@ namespace eeprom {
 static_assert(std::is_pod_v<Config<>>);
 static_assert(sizeof(Config<>) <= FLASH_TOTAL_SIZE);
 
+/*
+
+  In order to support the upgrade of an older config to the actual version, place here specializations of template
+  struct Config to record the older formats:
+
+template <> struct Config<someVersion> {
+  Header header;
+  // old configuration fields [...]
+};
+
+  Then place a specialization of template function upgradeOnce, that takes a Config<someVersion>
+  reference and returns a Config<someVersion + 1> object, with a reasonable conversion logic.
+
+*/
+
+template <uint32_t version> auto upgradeOnce(const Config<version> &o) {
+  // test must be always false, but got to reference a template parameter (rather than using false) otherwise the
+  // compiler will actually compile this function and fail
+  static_assert(!(version ^ Header::currentVersion), "Missing specialization for a Config<version>");
+  return o;
+}
+template <> auto upgradeOnce(const Config<Header::currentVersion> &o) {
+  // this function is required to exist by std::visit() on a variant, but should not be called
+  assert(false && "Config upgradeOnce function called on the current version");
+  return o;
+}
+
 namespace {
 
 template <uint32_t... versions> auto makeConfigVariant(std::integer_sequence<uint32_t, versions...>) {
@@ -87,26 +114,6 @@ template <uint32_t version = Header::currentVersion> constexpr size_t getMaxConf
 }
 
 } // namespace
-
-/*
-
-  Place here specializations of template struct Config to record older Config versions
-
-template <> struct Config<someVersion> {
-  Header header;
-  // old configuration fields [...]
-};
-
-  Then place a specialization of template function upgradeOnce, that takes a Config<someVersion>
-  reference and returns a Config<someVersion + 1> object, with a reasonable conversion logic.
-
-*/
-
-template <uint32_t version> auto upgradeOnce(const Config<version> &o);
-template <> auto upgradeOnce(const Config<Header::currentVersion> &o) {
-  assert(false && "Config upgradeOnce function called on the current version");
-  return o;
-}
 
 const uint32_t maxConfigLength = getMaxConfigLength();
 
