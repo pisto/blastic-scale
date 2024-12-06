@@ -1,3 +1,5 @@
+#!/bin/env python
+
 import subprocess
 
 revision = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("utf-8").strip()
