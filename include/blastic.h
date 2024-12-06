@@ -17,7 +17,7 @@
 
 namespace blastic {
 
-constexpr const char version[] = {BLASTIC_GIT_COMMIT " worktree " BLASTIC_GIT_WORKTREE_STATUS " toolchain " BLASTIC_TOOLCHAIN };
+constexpr const char version[] = {BLASTIC_GIT_COMMIT " worktree " BLASTIC_GIT_WORKTREE_STATUS " toolchain " BLASTIC_BUILD_SYSTEM };
 
 extern uint32_t debug;
 
