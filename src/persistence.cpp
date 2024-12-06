@@ -70,7 +70,7 @@ template <uint32_t version> auto upgradeOnce(const Config<version> &o) {
   return o;
 }
 template <> auto upgradeOnce(const Config<Header::currentVersion> &o) {
-  // this function is required to exist by std::visit() on a variant, but should not be called
+  // this function is required to exist by std::visit() on a variant of Config<versions>..., but should not be called
   assert(false && "Config upgradeOnce function called on the current version");
   return o;
 }
@@ -87,10 +87,10 @@ template <uint32_t version> constexpr uint32_t getVersion(const Config<version> 
 
 template <uint32_t version = Header::currentVersion> ConfigVariant readConfigVariant(uint32_t eepromVersion) {
   if (version == eepromVersion) {
-    ConfigVariant variant = Config<version>();
+    Config<version> config;
     auto &flash = DataFlashBlockDevice::getInstance();
-    if (flash.read(&std::get<Config<version>>(variant), 0, sizeof(Config<version>))) return {};
-    return variant;
+    if (flash.read(&config, 0, sizeof(config))) return {};
+    return config;
   }
   if constexpr (version > 0) return readConfigVariant<version - 1>(eepromVersion);
   else return {};
@@ -130,7 +130,7 @@ IOret Config<>::load() {
   auto &loaded = std::get<Config<>>(configVariant);
   loaded.sanitize();
   *this = loaded;
-  return eepromHeader.version == Header::currentVersion ? IOret::OK : IOret::UPGRADED;
+  return eepromHeader.version < header.version ? IOret::UPGRADED : IOret::OK;
 }
 
 void Config<>::sanitize() {
