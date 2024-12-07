@@ -9,8 +9,8 @@ Config config;
 
 const Config Config::defaults{
     .header = {.signature = Header::expectedSignature, .version = Header::currentVersion},
-    .scale = {.dataPin = 5,
-              .clockPin = 4,
+    .scale = {.dataPin = 4,
+              .clockPin = 5,
               .mode = scale::HX711Mode::A128,
               .calibrations = {{.tareRawRead = 45527,
                                 .weightRawRead = 114810,
