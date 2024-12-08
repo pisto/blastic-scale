@@ -9,8 +9,8 @@ Config config;
 
 const Config Config::defaults{
     .header = {.signature = Header::expectedSignature, .version = Header::currentVersion},
-    .scale = {.dataPin = 4,
-              .clockPin = 5,
+    .scale = {.dataPin = 5,
+              .clockPin = 4,
               .mode = scale::HX711Mode::A128,
               .calibrations = {{.tareRawRead = 45527,
                                 .weightRawRead = 114810,
@@ -21,7 +21,7 @@ const Config Config::defaults{
     .wifi = WifiConnection::Config{"", "", 10, 10},
     .submit =
         Submitter::Config{
-            0.05, "", "",
+            0.05, "BlastPersis", "BSPers",
             Submitter::Config::FormParameters{
                 "docs.google.com/forms/d/e/1FAIpQLSeI3jofIWqtWghblVPOTO1BtUbE8KmoJsGRJuRAu2ceEMIJFw/formResponse",
                 "entry.826036805", "entry.458823532", "entry.649832752", "entry.1219969504"}},
