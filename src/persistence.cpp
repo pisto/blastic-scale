@@ -26,22 +26,22 @@ const Config Config::defaults{
                 "docs.google.com/forms/d/e/1FAIpQLSeI3jofIWqtWghblVPOTO1BtUbE8KmoJsGRJuRAu2ceEMIJFw/formResponse",
                 "entry.826036805", "entry.458823532", "entry.649832752", "entry.1219969504"}},
     .buttons = {
-        {{.pin = 3,
-          .threshold = 10000,
-          .settings =
-              {.div = CTSU_CLOCK_DIV_16, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 152, .count = 1}},
-         {.pin = 8,
-          .threshold = 10000,
-          .settings =
-              {.div = CTSU_CLOCK_DIV_16, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 202, .count = 1}},
-         {.pin = 2,
-          .threshold = 10000,
-          .settings =
-              {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 154, .count = 1}},
-         {.pin = 6,
-          .threshold = 10000,
+        {{.pin = 6,
+          .threshold = 4749,
           .settings = {
-              .div = CTSU_CLOCK_DIV_16, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 282, .count = 1}}}}};
+              .div=CTSU_CLOCK_DIV_16, .gain=CTSU_ICO_GAIN_100, .ref_current=0, .offset=309, .count=1}},
+         {.pin = 9,
+          .threshold = 3387,
+          .settings = {
+               .div=CTSU_CLOCK_DIV_16, .gain=CTSU_ICO_GAIN_100, .ref_current=0, .offset=226, .count=1}},
+         {.pin = 8,
+          .threshold = 1166,
+          .settings = {
+              .div=CTSU_CLOCK_DIV_16, .gain=CTSU_ICO_GAIN_100, .ref_current=0, .offset=169, .count=17}},
+         {.pin = 3,
+          .threshold = 6310,
+          .settings = {
+          .div=CTSU_CLOCK_DIV_16, .gain=CTSU_ICO_GAIN_100, .ref_current=0, .offset=185, .count=1}}}}};
 
 namespace eeprom {
 
