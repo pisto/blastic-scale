@@ -7,6 +7,7 @@ namespace blastic {
 
 Config config;
 
+
 const Config Config::defaults{
     .header = {.signature = Header::expectedSignature, .version = Header::currentVersion},
     .scale = {.dataPin = 5,
@@ -26,23 +27,26 @@ const Config Config::defaults{
                 "docs.google.com/forms/d/e/1FAIpQLSeI3jofIWqtWghblVPOTO1BtUbE8KmoJsGRJuRAu2ceEMIJFw/formResponse",
                 "entry.826036805", "entry.458823532", "entry.649832752", "entry.1219969504"}},
     .buttons = {
-        {{.pin = 6,
-          .threshold = 4749,
-          .settings = {
-              .div=CTSU_CLOCK_DIV_16, .gain=CTSU_ICO_GAIN_100, .ref_current=0, .offset=309, .count=1}},
-         {.pin = 9,
-          .threshold = 3387,
-          .settings = {
-               .div=CTSU_CLOCK_DIV_16, .gain=CTSU_ICO_GAIN_100, .ref_current=0, .offset=226, .count=1}},
-         {.pin = 8,
-          .threshold = 1166,
-          .settings = {
-              .div=CTSU_CLOCK_DIV_16, .gain=CTSU_ICO_GAIN_100, .ref_current=0, .offset=169, .count=17}},
+        {
          {.pin = 3,
-          .threshold = 6310,
+          .threshold = 5234,
           .settings = {
-          .div=CTSU_CLOCK_DIV_16, .gain=CTSU_ICO_GAIN_100, .ref_current=0, .offset=185, .count=1}}}}};
+          .div=CTSU_CLOCK_DIV_18, .gain=CTSU_ICO_GAIN_100, .ref_current=0, .offset=157, .count=1}},
+         {.pin = 8,
+          .threshold = 2967,
+          .settings = {
+              .div=CTSU_CLOCK_DIV_18, .gain=CTSU_ICO_GAIN_100, .ref_current=0, .offset=178, .count=1}},
+         {.pin = 6,
+          .threshold = 3698,
+          .settings = {
+              .div=CTSU_CLOCK_DIV_18, .gain=CTSU_ICO_GAIN_100, .ref_current=0, .offset=237, .count=1}}, 
+         {.pin = 9,
+          .threshold = 4513,
+          .settings = {
+               .div=CTSU_CLOCK_DIV_18, .gain=CTSU_ICO_GAIN_100, .ref_current=0, .offset=186, .count=1}}}}};
 
+
+         
 namespace eeprom {
 
 static_assert(std::is_pod_v<Config<>>);
