@@ -37,8 +37,7 @@ void setup() {
   Serial.print("setup: booting blastic-scale version ");
   Serial.println(version);
   switch (config.load()) {
-  case eeprom::IOret::UPGRADED:
-    Serial.print("setup: eeprom saved config converted from older version\n");
+  case eeprom::IOret::UPGRADED: Serial.print("setup: eeprom saved config converted from older version\n");
   case eeprom::IOret::OK:
     if (!config.sanitize()) Serial.print("setup: config had to be sanitized, eeprom is likely corrupted\n");
     Serial.print("setup: loaded configuration from eeprom\n");
@@ -222,31 +221,22 @@ static void ssid(WordSplit &args) {
   }
   MSerial serial;
   serial->print("wifi::ssid: ");
-  if (std::strlen(config.wifi.ssid)) {
-    serial->print('\'');
-    serial->print(config.wifi.ssid);
-    serial->print("\'\n");
-  } else serial->print("<none>\n");
+  if (std::strlen(config.wifi.ssid)) serial->println(config.wifi.ssid);
+  else serial->print("<none>\n");
 }
 
 static void password(WordSplit &args) {
   if (auto password = args.rest(false, false)) config.wifi.password = password;
   MSerial serial;
   serial->print("wifi::password: ");
-  if (std::strlen(config.wifi.password)) {
-    serial->print('\'');
-    serial->print(config.wifi.password);
-    serial->print("\'\n");
-  } else serial->print("<none>\n");
+  if (std::strlen(config.wifi.password)) serial->println(config.wifi.password);
+  else serial->print("<none>\n");
 }
 
 static void connect(WordSplit &) {
-  {
-    MWiFi wifi;
-    if (strcmp(wifi->firmwareVersion(), WIFI_FIRMWARE_LATEST_VERSION)) {
-      MSerial()->print("wifi::connect: bad wifi firmware, need version " WIFI_FIRMWARE_LATEST_VERSION "\n");
-      return;
-    }
+  if (!WifiConnection::firmwareCompatible()) {
+    MSerial()->print("wifi::connect: bad wifi firmware, need at least version " WIFI_FIRMWARE_LATEST_VERSION "\n");
+    return;
   }
   if (!std::strlen(config.wifi.ssid)) {
     MSerial()->print("wifi::connect: configure the connection first with wifi::ssid\n");
@@ -314,12 +304,9 @@ static void ping(WordSplit &args) {
     MSerial()->print("tls::ping: invalid port\n");
     return;
   }
-  {
-    MWiFi wifi;
-    if (strcmp(wifi->firmwareVersion(), WIFI_FIRMWARE_LATEST_VERSION)) {
-      MSerial()->print("tls::ping: bad wifi firmware, need version " WIFI_FIRMWARE_LATEST_VERSION "\n");
-      return;
-    }
+  if (!WifiConnection::firmwareCompatible()) {
+    MSerial()->print("tls::ping: bad wifi firmware, need at least version " WIFI_FIRMWARE_LATEST_VERSION "\n");
+    return;
   }
   WifiConnection wifi(config.wifi);
   if (!wifi) {
