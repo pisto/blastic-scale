@@ -133,7 +133,7 @@ IOret Config<>::load() {
 bool Config<>::sanitize() {
   Config d;
   d.defaults();
-  auto hashPreSanitize = util::murmur3_32(*this);
+  auto hashPreSanitize = util::murmur3_32(reinterpret_cast<const unsigned char*>(this), sizeof(*this));
   // weak sanitization, just make sure we don't get UB (enums out of range, strings without terminators...)
   if (uint8_t(scale.mode) > uint8_t(scale::HX711Mode::A64)) scale.mode = d.scale.mode;
   for (auto &cal : scale.calibrations)
@@ -147,7 +147,7 @@ bool Config<>::sanitize() {
   sanitizeStringBuffers(wifi.ssid, wifi.password, submit.collectionPoint, submit.collectionPoint, submit.collectorName,
                         submit.form.collectionPoint, submit.form.collectorName, submit.form.type, submit.form.urn,
                         submit.form.weight);
-  return hashPreSanitize == util::murmur3_32(*this);
+  return hashPreSanitize == util::murmur3_32(reinterpret_cast<const unsigned char*>(this), sizeof(*this));
 }
 
 IOret Config<>::save() const {
