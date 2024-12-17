@@ -215,6 +215,24 @@ void Submitter::loop() [[noreturn]] {
   MSerial()->print("submitter: started lcd\n");
   gotInput();
 
+  // initial tare on start
+  uint32_t cmd;
+  {
+    constexpr const uint32_t scaleCliTimeout = 2000, scaleCliMaxMedianWidth = 16;
+    auto tare = raw(config.scale, scaleCliMaxMedianWidth, pdMS_TO_TICKS(scaleCliTimeout));
+    if (tare == scale::readErr) {
+      MSerial()->print("submitter: initial tare failure\n");
+      painter = scroll("tare fail");
+      xTaskNotifyWait(0, -1, &cmd, pdMS_TO_TICKS(10000));
+    } else {
+      auto &calibration = config.scale.getCalibration();
+      calibration.tareRawRead = tare;
+      MSerial serial;
+      serial->print("submitter: initial tare ");
+      serial->println(tare);
+    }
+  }
+
   while (true) {
     if (debug) MSerial()->print("submitter: preview\n");
     auto action = preview();
@@ -224,7 +242,6 @@ void Submitter::loop() [[noreturn]] {
     }
     gotInput();
     if (action != Action::OK) continue;
-    uint32_t cmd;
     // sanity checks for configuration
     {
       MWiFi wifi;
