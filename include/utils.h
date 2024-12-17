@@ -1,13 +1,25 @@
 #pragma once
 
+#include <array>
 #include <cstring>
 
-/*
-  Copy a string like strncpy, but make sure that it is null terminated in *all* cases.
-*/
+namespace util {
 
-template <typename T, typename U, size_t alen> inline T *strcpy0(T (&dst)[alen], const U *src, size_t len = alen) {
-  strncpy(dst, src, len);
-  dst[len < alen ? len : alen - 1] = 0;
-  return dst;
-}
+template <size_t size> struct StringBuffer : public std::array<char, size> {
+
+  using std::array<char, size>::array;
+
+  StringBuffer &operator=(const char *src) { this->strncpy(src); }
+
+  operator char *() { return this->data(); }
+
+  operator const char *() const { return this->data(); }
+
+  StringBuffer &strncpy(const char *src, size_t len = size) {
+    std::strncpy(*this, src, len);
+    (*this)[len < size ? len : size - 1] = 0;
+    return *this;
+  }
+};
+
+} // namespace util

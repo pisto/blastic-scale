@@ -42,9 +42,7 @@ WifiConnection::WifiConnection(const Config &config) : util::Mutexed<WiFi>() {
   if (*this && !strncmp(wifi->SSID(), config.ssid, sizeof(config.ssid))) return;
   wifi->end();
   wifiReaper = {.disconnectTimeout = config.disconnectTimeout, .endTime = 0};
-  if (wifi->begin(config.ssid, strnlen(config.password, sizeof(config.password)) ? config.password : nullptr) !=
-      WL_CONNECTED)
-    return;
+  if (wifi->begin(config.ssid, std::strlen(config.password) ? static_cast<const char*>(config.password) : nullptr) != WL_CONNECTED) return;
   auto dhcpStart = millis();
   while (!wifi->localIP() && millis() - dhcpStart < config.dhcpTimeout * 1000) vTaskDelay(dhcpPollInterval);
 }

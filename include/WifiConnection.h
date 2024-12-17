@@ -5,6 +5,7 @@
 #include <WiFiS3.h>
 #include <WiFiSSLClient.h>
 #include "Mutexed.h"
+#include "utils.h"
 
 namespace blastic {
 
@@ -22,7 +23,8 @@ public:
 
   struct Config {
     // leave the password empty to connect to an open network
-    char ssid[32], password[64];
+    util::StringBuffer<32> ssid;
+    util::StringBuffer<64> password;
     uint8_t dhcpTimeout, disconnectTimeout;
   };
 

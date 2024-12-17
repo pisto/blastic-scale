@@ -17,7 +17,8 @@
 
 namespace blastic {
 
-constexpr const char version[] = {BLASTIC_GIT_COMMIT " worktree " BLASTIC_GIT_WORKTREE_STATUS};
+constexpr const char version[] = {BLASTIC_GIT_COMMIT " worktree " BLASTIC_GIT_WORKTREE_STATUS
+                                                     " toolchain " BLASTIC_BUILD_SYSTEM};
 
 extern uint32_t debug;
 
@@ -26,7 +27,8 @@ namespace eeprom {
 enum class IOret { OK, ERROR, UPGRADED, NOT_FOUND, UNKONWN_VERSION };
 
 struct Header {
-  static constexpr const uint32_t expectedSignature = ((uint32_t('B') << 8 | 'L') << 8 | 'S') << 8 | 'C', currentVersion = 0;
+  static constexpr const uint32_t expectedSignature = ((uint32_t('B') << 8 | 'L') << 8 | 'S') << 8 | 'C',
+                                  currentVersion = 0;
   uint32_t signature, version;
 };
 
@@ -40,11 +42,10 @@ template <> struct Config<Header::currentVersion> {
   blastic::Submitter::Config submit;
   buttons::Config buttons;
 
-  void sanitize();
-  static const Config defaults;
-
   IOret load();
   IOret save() const;
+  bool sanitize();
+  void defaults();
 };
 
 extern const uint32_t maxConfigLength;

@@ -235,20 +235,20 @@ void Submitter::loop() [[noreturn]] {
       }
     }
     auto config = blastic::config.submit;
-    if (!strlen(config.collectionPoint)) {
+    if (!std::strlen(config.collectionPoint)) {
       painter = scroll("missing collection point name");
       xTaskNotifyWait(0, -1, &cmd, pdMS_TO_TICKS(10000));
       continue;
     }
     const char *path = strchr(config.form.urn, '/');
-    decltype(config.form.urn) serverAddress;
-    if (path) strcpy0(serverAddress, config.form.urn, path - config.form.urn);
+    Config::FormParameters::Param serverAddress;
+    if (path) serverAddress.strncpy(config.form.urn, path - config.form.urn);
     else {
-      strcpy0(serverAddress, config.form.urn);
+      serverAddress = config.form.urn;
       path = "/";
     }
-    if (!strlen(config.form.urn) || !strlen(config.form.type) || !strlen(config.form.collectionPoint) ||
-        !strlen(config.form.weight)) {
+    if (!std::strlen(config.form.urn) || !std::strlen(config.form.type) || !std::strlen(config.form.collectionPoint) ||
+        !std::strlen(config.form.weight)) {
       painter = scroll("bad form pointers");
       xTaskNotifyWait(0, -1, &cmd, pdMS_TO_TICKS(5000));
       continue;
@@ -308,7 +308,7 @@ void Submitter::loop() [[noreturn]] {
       formData += '&';
       formData += config.form.collectorName;
       formData += '=';
-      formData += URLEncoder.encode(strlen(config.collectorName) ? config.collectorName : userAgent);
+      formData += URLEncoder.encode(std::strlen(config.collectorName) ? config.collectorName : userAgent);
 
       HttpClient https(tls, serverAddress, HttpClient::kHttpsPort);
       https.beginRequest();
