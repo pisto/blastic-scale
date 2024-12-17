@@ -439,7 +439,7 @@ static void save(WordSplit &) {
 
 static void export_(WordSplit &) {
   auto inputLen = blastic::eeprom::maxConfigLength, base64Length = (inputLen + 2 - ((inputLen + 2) % 3)) / 3 * 4 + 1;
-  assert(base64Length == encode_base64_length(inputLen) + 1);
+  configASSERT(base64Length == encode_base64_length(inputLen) + 1);
   unsigned char input[inputLen], base64[base64Length];
   auto &flash = DataFlashBlockDevice::getInstance();
   if (flash.read(input, 0, inputLen)) {
