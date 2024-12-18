@@ -184,11 +184,11 @@ HasTimedOut<Submitter::Action> Submitter::preview() {
 
 HasTimedOut<plastic> Submitter::plasticSelection() {
   painter = scroll("type");
-  uint32_t cmd = 0;
-  xTaskNotifyWait(0, -1, &cmd, pdMS_TO_TICKS(2000));
+  xTaskNotifyWait(0, -1, nullptr, pdMS_TO_TICKS(2000));
   int i = 0;
   while (true) {
     painter = scroll(plasticName(plastics[i]));
+    uint32_t cmd = 0;
     if (!xTaskNotifyWait(-1, -1, &cmd, pdMS_TO_TICKS(idleTimeout))) return {};
     gotInput();
     switch (toAction(cmd)) {
@@ -214,6 +214,26 @@ void Submitter::loop() [[noreturn]] {
   matrix.beginText(0, 0, 0xFFFFFF);
   MSerial()->print("submitter: started lcd\n");
   gotInput();
+  auto notice = [this](auto &&msg, int millis = 5000) {
+    painter = scroll(std::move(msg));
+    return xTaskNotifyWait(0, -1, nullptr, pdMS_TO_TICKS(millis));
+  };
+
+  // initial tare on start
+  {
+    constexpr const uint32_t scaleCliTimeout = 2000, scaleCliMaxMedianWidth = 16;
+    auto tare = raw(config.scale, scaleCliMaxMedianWidth, pdMS_TO_TICKS(scaleCliTimeout));
+    if (tare == scale::readErr) {
+      MSerial()->print("submitter: initial tare failure\n");
+      notice("tare fail");
+    } else {
+      auto &calibration = config.scale.getCalibration();
+      calibration.tareRawRead = tare;
+      MSerial serial;
+      serial->print("submitter: initial tare ");
+      serial->println(tare);
+    }
+  }
 
   while (true) {
     if (debug) MSerial()->print("submitter: preview\n");
@@ -224,20 +244,9 @@ void Submitter::loop() [[noreturn]] {
     }
     gotInput();
     if (action != Action::OK) continue;
-    uint32_t cmd;
-    // sanity checks for configuration
-    {
-      MWiFi wifi;
-      if (strcmp(wifi->firmwareVersion(), WIFI_FIRMWARE_LATEST_VERSION)) {
-        painter = scroll("bad wifi firmware");
-        xTaskNotifyWait(0, -1, &cmd, pdMS_TO_TICKS(10000));
-        continue;
-      }
-    }
-    auto config = blastic::config.submit;
+    auto &config = blastic::config.submit;
     if (!std::strlen(config.collectionPoint)) {
-      painter = scroll("missing collection point name");
-      xTaskNotifyWait(0, -1, &cmd, pdMS_TO_TICKS(10000));
+      notice("missing collection point name", 10000);
       continue;
     }
     const char *path = strchr(config.form.urn, '/');
@@ -249,8 +258,7 @@ void Submitter::loop() [[noreturn]] {
     }
     if (!std::strlen(config.form.urn) || !std::strlen(config.form.type) || !std::strlen(config.form.collectionPoint) ||
         !std::strlen(config.form.weight)) {
-      painter = scroll("bad form pointers");
-      xTaskNotifyWait(0, -1, &cmd, pdMS_TO_TICKS(5000));
+      notice("bad form data");
       continue;
     }
 
@@ -258,36 +266,37 @@ void Submitter::loop() [[noreturn]] {
     painter = scroll("...");
     auto weight = scale::weight(blastic::config.scale, 10);
     if (!(weight >= config.threshold)) {
-      if (weight < config.threshold) painter = scroll("<=0");
-      else painter = scroll("bad value");
-      xTaskNotifyWait(0, -1, &cmd, pdMS_TO_TICKS(5000));
+      if (weight < config.threshold) notice("<=0");
+      else notice("bad value");
       continue;
     }
     for (int i = 0; i < 5; i++) {
       painter = show(weight);
-      if (xTaskNotifyWait(0, -1, &cmd, pdMS_TO_TICKS(200))) break;
+      if (xTaskNotifyWait(0, -1, nullptr, pdMS_TO_TICKS(200))) break;
       painter = clear();
-      if (xTaskNotifyWait(0, -1, &cmd, pdMS_TO_TICKS(200))) break;
+      if (xTaskNotifyWait(0, -1, nullptr, pdMS_TO_TICKS(200))) break;
     }
     auto plastic = plasticSelection();
     if (plastic.timedOut) continue;
     painter = scroll(plasticName(plastic), 200, 100, 2);
-    xTaskNotifyWait(0, -1, &cmd, pdMS_TO_TICKS(2000));
+    xTaskNotifyWait(0, -1, nullptr, pdMS_TO_TICKS(2000));
+    if (!WifiConnection::firmwareCompatible()) {
+      notice("upgrade wifi firmware", 10000);
+      continue;
+    }
     painter = scroll("sending form...");
     int statusCode;
     {
       WifiConnection wifi(blastic::config.wifi);
       if (!wifi) {
         if (debug) MSerial()->print("submitter: failed to connect to wifi\n");
-        painter = scroll("wifi error");
-        xTaskNotifyWait(0, -1, &cmd, pdMS_TO_TICKS(5000));
+        notice("wifi error");
         continue;
       }
       WiFiSSLClient tls;
       if (!tls.connect(serverAddress, HttpClient::kHttpsPort)) {
         MSerial()->print("submitter: failed to connect to server\n");
-        painter = scroll("tls error");
-        xTaskNotifyWait(0, -1, &cmd, pdMS_TO_TICKS(5000));
+        notice("connect error");
         return;
       }
 
@@ -345,13 +354,12 @@ void Submitter::loop() [[noreturn]] {
         serial->println();
       }
     }
-    if (statusCode == 200) painter = scroll("ok!");
+    if (statusCode == 200) notice("ok!");
     else {
-      std::string errorMsg = (statusCode >= 100 && statusCode < 600) ? "http error " : "connection error ";
+      std::string errorMsg = "error ";
       errorMsg += statusCode;
-      painter = scroll(std::move(errorMsg));
+      notice(std::move(errorMsg));
     }
-    xTaskNotifyWait(0, -1, &cmd, pdMS_TO_TICKS(5000));
   }
 }
 

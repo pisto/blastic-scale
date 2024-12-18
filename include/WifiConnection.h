@@ -20,6 +20,7 @@ namespace blastic {
 class WifiConnection : public util::Mutexed<WiFi> {
 public:
   static const bool ipConnectBroken;
+  static bool firmwareCompatible();
 
   struct Config {
     // leave the password empty to connect to an open network
