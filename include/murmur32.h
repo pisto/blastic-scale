@@ -25,7 +25,7 @@ constexpr uint32_t murmur3_32_scramble(uint32_t dword) {
   This constexpr function calculates the murmur3 32bit hash of a string. Can be used to make lookup tables for strings.
 */
 
-template <typename T> constexpr uint32_t inline murmur3_32(const T *const buff, size_t len) {
+template <typename T> constexpr uint32_t murmur3_32(const T *const buff, size_t len) {
   static_assert(sizeof(T) == 1);
   uint32_t h = 0xfaa7c96cu, dwordLen = len & ~uint32_t(3), leftoverBytes = len & uint32_t(3);
   for (uint32_t i = 0; i < dwordLen; i += 4) {
@@ -47,6 +47,10 @@ template <typename T> constexpr uint32_t inline murmur3_32(const T *const buff, 
   return h;
 }
 
-constexpr static uint32_t murmur3_32(const char *const buff) { return murmur3_32(buff, strlen(buff)); }
+constexpr uint32_t murmur3_32(const char *buff) { return murmur3_32(buff, strlen(buff)); }
+constexpr uint32_t murmur3_32(char *buff) { return murmur3_32(buff, strlen(buff)); }
+template <typename T> uint32_t murmur3_32(const T &obj) {
+  return murmur3_32(reinterpret_cast<const unsigned char *>(&obj), sizeof(obj));
+}
 
 } // namespace util

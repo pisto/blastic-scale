@@ -1,5 +1,6 @@
 #include <utility>
 #include <variant>
+#include <memory>
 #include "DataFlashBlockDevice.h"
 #include "blastic.h"
 #include "murmur32.h"
@@ -45,16 +46,19 @@ using ConfigVariant = decltype(makeConfigVariant(std::make_integer_sequence<uint
 
 template <uint32_t version> constexpr uint32_t getVersion(const Config<version> &c) { return version; }
 
-template <uint32_t version = Header::currentVersion> ConfigVariant readConfigVariant(uint32_t eepromVersion) {
+template <uint32_t version = Header::currentVersion>
+std::unique_ptr<ConfigVariant> readConfigVariant(uint32_t eepromVersion) {
   if (version == eepromVersion) {
-    Config<version> config;
     static_assert(std::is_pod_v<Config<version>>);
+    auto variant = std::make_unique<ConfigVariant>();
+    auto &config = variant->emplace<Config<version>>();
     auto &flash = DataFlashBlockDevice::getInstance();
-    if (flash.read(&config, 0, sizeof(config))) return {};
-    return config;
+    if (flash.read(&config, 0, sizeof(config))) goto error;
+    return variant;
   }
   if constexpr (version > 0) return readConfigVariant<version - 1>(eepromVersion);
-  else return {};
+  error:
+  return {};
 }
 
 void sanitizeStringBuffers() {}
@@ -122,32 +126,32 @@ IOret Config<>::load() {
   if (eepromHeader.signature != Header::expectedSignature) return IOret::NOT_FOUND;
   if (eepromHeader.version > Header::currentVersion) return IOret::UNKONWN_VERSION;
   auto configVariant = readConfigVariant(eepromHeader.version);
-  if (configVariant.valueless_by_exception()) return IOret::ERROR;
-  while (configVariant.index() < std::variant_size_v<ConfigVariant> - 1)
-    configVariant = std::visit([](auto &&configOldVersion) { return upgradeOnce(configOldVersion); }, configVariant);
-  *this = std::get<eeprom::Config<>>(configVariant);
+  if (configVariant->valueless_by_exception()) return IOret::ERROR;
+  while (configVariant->index() < std::variant_size_v<ConfigVariant> - 1)
+    *configVariant = std::visit([](auto &&configOldVersion) { return upgradeOnce(configOldVersion); }, *configVariant);
+  *this = std::get<eeprom::Config<>>(*configVariant);
   header = {.signature = Header::expectedSignature, .version = Header::currentVersion};
   return eepromHeader.version < header.version ? IOret::UPGRADED : IOret::OK;
 }
 
 bool Config<>::sanitize() {
-  Config d;
-  d.defaults();
-  auto hashPreSanitize = util::murmur3_32(reinterpret_cast<const unsigned char*>(this), sizeof(*this));
+  auto defaults = std::make_unique<Config>();
+  defaults->defaults();
+  auto hashPreSanitize = util::murmur3_32(*this);
   // weak sanitization, just make sure we don't get UB (enums out of range, strings without terminators...)
-  if (uint8_t(scale.mode) > uint8_t(scale::HX711Mode::A64)) scale.mode = d.scale.mode;
+  if (uint8_t(scale.mode) > uint8_t(scale::HX711Mode::A64)) scale.mode = defaults->scale.mode;
   for (auto &cal : scale.calibrations)
     if (!isfinite(cal.weight)) cal.weight = 0;
-  if (!isfinite(submit.threshold) || submit.threshold < 0) submit.threshold = d.submit.threshold;
+  if (!isfinite(submit.threshold) || submit.threshold < 0) submit.threshold = defaults->submit.threshold;
   for (int i = 0; i < size(buttons); i++) {
-    auto &defaultButton = d.buttons[i], &button = buttons[i];
+    auto &defaultButton = defaults->buttons[i], &button = buttons[i];
     if (uint32_t(button.settings.div) > uint32_t(CTSU_CLOCK_DIV_64)) button.settings.div = defaultButton.settings.div;
     if (uint32_t(button.settings.gain) > uint32_t(CTSU_ICO_GAIN_40)) button.settings.gain = defaultButton.settings.gain;
   }
   sanitizeStringBuffers(wifi.ssid, wifi.password, submit.collectionPoint, submit.collectionPoint, submit.collectorName,
                         submit.form.collectionPoint, submit.form.collectorName, submit.form.type, submit.form.urn,
                         submit.form.weight);
-  return hashPreSanitize == util::murmur3_32(reinterpret_cast<const unsigned char*>(this), sizeof(*this));
+  return hashPreSanitize == util::murmur3_32(*this);
 }
 
 IOret Config<>::save() const {

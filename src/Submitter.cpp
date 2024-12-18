@@ -1,5 +1,6 @@
 #include <string>
 #include <array>
+#include <memory>
 #include "blastic.h"
 #include <ArduinoGraphics.h>
 #include <Arduino_LED_Matrix.h>
@@ -319,37 +320,37 @@ void Submitter::loop() [[noreturn]] {
       formData += '=';
       formData += URLEncoder.encode(std::strlen(config.collectorName) ? config.collectorName : userAgent);
 
-      HttpClient https(tls, serverAddress, HttpClient::kHttpsPort);
-      https.beginRequest();
-      https.noDefaultRequestHeaders();
-      https.connectionKeepAlive();
-      https.post(path);
-      https.sendHeader("Host", serverAddress);
-      https.sendHeader("User-Agent", userAgent);
-      https.sendHeader("Content-Type", "application/x-www-form-urlencoded");
-      https.sendHeader("Content-Length", formData.length());
-      https.sendHeader("Accept", "*/*");
-      https.beginBody();
-      https.print(formData);
-      https.endRequest();
+      auto https = std::make_unique<HttpClient>(tls, serverAddress, HttpClient::kHttpsPort);
+      https->beginRequest();
+      https->noDefaultRequestHeaders();
+      https->connectionKeepAlive();
+      https->post(path);
+      https->sendHeader("Host", serverAddress);
+      https->sendHeader("User-Agent", userAgent);
+      https->sendHeader("Content-Type", "application/x-www-form-urlencoded");
+      https->sendHeader("Content-Length", formData.length());
+      https->sendHeader("Accept", "*/*");
+      https->beginBody();
+      https->print(formData);
+      https->endRequest();
 
-      statusCode = https.responseStatusCode();
+      statusCode = https->responseStatusCode();
       if (debug) {
         MSerial serial;
         serial->print("submitter::response: ");
         serial->println(statusCode);
-        while (https.headerAvailable()) {
+        while (https->headerAvailable()) {
           serial->print("submitter::response: ");
-          serial->print(https.readHeaderName());
+          serial->print(https->readHeaderName());
           serial->print(": ");
-          serial->println(https.readHeaderValue());
+          serial->println(https->readHeaderValue());
         }
         serial->print("submitter::response: body:\n");
         constexpr const size_t maxLen = std::min(255, SERIAL_BUFFER_SIZE - 1);
-        while (https.available()) {
-          char bodyChunk[maxLen];
-          auto len = https.readBytes(bodyChunk, maxLen);
-          serial->write(bodyChunk, len);
+        std::unique_ptr<char[]> bodyChunk(new char[maxLen]);
+        while (https->available()) {
+          auto len = https->readBytes(bodyChunk.get(), maxLen);
+          serial->write(bodyChunk.get(), len);
         }
         serial->println();
       }

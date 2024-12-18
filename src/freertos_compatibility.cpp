@@ -58,10 +58,14 @@ void vApplicationGetIdleTaskMemory(StaticTask_t **taskBuffer, StackType_t **stac
   ensures that all access to the heap (malloc/realloc/calloc...) is safe.
 */
 extern "C" void __real___malloc_lock(_reent *);
-extern "C" void __wrap___malloc_lock(_reent *) { vTaskSuspendAll(); }
+extern "C" void __wrap___malloc_lock(_reent *) {
+  if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED) vTaskSuspendAll();
+}
 
 extern "C" void __real___malloc_unlock(_reent *);
-extern "C" void __wrap___malloc_unlock(_reent *) { xTaskResumeAll(); }
+extern "C" void __wrap___malloc_unlock(_reent *) {
+  if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED) xTaskResumeAll();
+}
 
 #if configUSE_MALLOC_FAILED_HOOK
 
@@ -79,7 +83,6 @@ extern "C" void *__wrap__malloc_r(struct _reent *r, size_t s) {
 }
 
 #endif
-
 
 /*
   Hook failed assert to a Serial print, then throw a stack trace every 10 seconds.
@@ -144,7 +147,7 @@ extern "C" void __assert_func(const char *file, int line, const char *, const ch
 }
 
 void loop() [[noreturn]] {
-  Serial.print("setup: starting FreeRTOS scheduler\n");
+  Serial.print("loop: starting FreeRTOS scheduler\n");
   vTaskStartScheduler();
-  configASSERT(false && "vTaskStartScheduler() should never return");
+  assert(false && "vTaskStartScheduler() should never return");
 }

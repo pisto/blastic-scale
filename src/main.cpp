@@ -1,4 +1,5 @@
 #include <iterator>
+#include <memory>
 #include <base64.hpp>
 #include "DataFlashBlockDevice.h"
 #include "blastic.h"
@@ -337,17 +338,17 @@ static void ping(WordSplit &args) {
     MSerial()->print("tls::ping: send complete, waiting for response\n");
 
     constexpr const size_t maxLen = std::min(255, SERIAL_BUFFER_SIZE - 1);
-    uint8_t tlsInput[maxLen];
+    std::unique_ptr<uint8_t[]> tlsInput(new uint8_t[maxLen]);
     constexpr const unsigned int waitingReadInterval = 100;
     while (true) {
       // this is non blocking as the underlying code may return zero (and available() == 0) while still being connected
-      auto len = client.read(tlsInput, maxLen);
+      auto len = client.read(tlsInput.get(), maxLen);
       if (len < 0) break;
       if (!len) {
         vTaskDelay(pdMS_TO_TICKS(waitingReadInterval));
         continue;
       }
-      MSerial()->write(tlsInput, len);
+      MSerial()->write(tlsInput.get(), len);
     }
   }
 
@@ -451,14 +452,14 @@ static void export_(WordSplit &) {
 }
 
 static void defaults(WordSplit &args) {
-  Config d;
-  d.defaults();
-  auto result = d.save();
+  auto defaults = std::make_unique<Config>();
+  defaults->defaults();
+  auto result = defaults->save();
   MSerial serial;
   serial->print("eeprom::defaults: ");
   if (result == blastic::eeprom::IOret::OK) {
     serial->print("ok ");
-    serial->print(sizeof(d));
+    serial->print(sizeof(defaults));
     serial->print(" bytes\n");
   } else serial->print("error\n");
 }
