@@ -45,6 +45,7 @@ using Config = std::array<DebouncedTouchSensor::Config, n>;
 /*
   Reinitialize the R4_Touch library with a new configuration.
 */
+TimerHandle_t measurementTimer();
 void reset(const Config &config);
 
 /*

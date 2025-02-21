@@ -235,8 +235,10 @@ void Submitter::loop() [[noreturn]] {
     auto action = preview();
     if (action.timedOut) {
       if (debug) MSerial()->print("submitter: idling\n");
+      xTimerStop(buttons::measurementTimer(), portMAX_DELAY);
       action = idling();
     }
+    xTimerStart(buttons::measurementTimer(), portMAX_DELAY);
     gotInput();
     if (action != Action::OK) continue;
     auto &config = blastic::config.submit;
