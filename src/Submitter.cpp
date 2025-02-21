@@ -106,11 +106,8 @@ static util::loopFunction show(float v) {
   // loop over the fractional part (fav) digits
   for (auto digitsEnd = strStart + digits; fractionalPtr < digitsEnd; fractionalPtr++, fav = modf(fav, &iav) * 10)
     *fractionalPtr = '0' + uint8_t(fav);
-  // value positive: value aligned to top, dots below value
-  // value negative: value aligned to bottom, dots above value
   // with the 4x6 font numbers are actually 3x5, so align dots at Y offset 6
-  auto textYOffset = v >= 0 ? 0 : matrixHeight - font.height,
-       dotsYOffset = v >= 0 ? textYOffset + font.height : textYOffset - 2;
+  auto textYOffset = 1, dotsYOffset = textYOffset + font.height;
 
   return [=](uint32_t &) {
     matrix.clear();
