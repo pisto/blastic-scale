@@ -57,12 +57,12 @@ static util::loopFunction scroll(std::string &&str, unsigned int initialDelay = 
       goto end;
     }
     if (shiftX + textWidht > 0) {
-      matrix.beginText(shiftX, 0);
+      matrix.beginText(shiftX, 1);
       matrix.print(str.c_str());
       matrix.endText();
     }
     if (scrollDelay && textWidht > matrixWidth && wrapShiftX < matrixWidth) {
-      matrix.beginText(wrapShiftX, 0);
+      matrix.beginText(wrapShiftX, 1);
       matrix.print(str.c_str());
       matrix.endText();
     }
