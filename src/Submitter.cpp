@@ -13,6 +13,25 @@ static ArduinoLEDMatrix matrix;
 static const auto &font = Font_4x6;
 static constexpr const int matrixWidth = 12, matrixHeight = 8, fullCharsOnMatrix = matrixWidth / 4;
 
+/*
+  Annoyingly, the ArduinoLEDMatrix timer interrupt cannot be stopped.
+  Here use some magic to access its FspTimer member to be able to stop it manually on demand.
+
+  https://stackoverflow.com/a/3173080
+  http://bloglitb.blogspot.com/2011/12/access-to-private-members-safer.html
+*/
+
+struct ArduinoLEDMatrixBackdoor {
+  typedef FspTimer ArduinoLEDMatrix::*type;
+  friend type get(ArduinoLEDMatrixBackdoor);
+};
+
+template <typename Tag, typename Tag::type M> struct Backdoor {
+  friend typename Tag::type get(Tag) { return M; }
+};
+
+template struct Backdoor<ArduinoLEDMatrixBackdoor, &ArduinoLEDMatrix::_ledTimer>;
+
 static util::loopFunction clear() {
   return +[](uint32_t &) {
     matrix.clear();
@@ -106,11 +125,8 @@ static util::loopFunction show(float v) {
   // loop over the fractional part (fav) digits
   for (auto digitsEnd = strStart + digits; fractionalPtr < digitsEnd; fractionalPtr++, fav = modf(fav, &iav) * 10)
     *fractionalPtr = '0' + uint8_t(fav);
-  // value positive: value aligned to top, dots below value
-  // value negative: value aligned to bottom, dots above value
   // with the 4x6 font numbers are actually 3x5, so align dots at Y offset 6
-  auto textYOffset = v >= 0 ? 0 : matrixHeight - font.height,
-       dotsYOffset = v >= 0 ? textYOffset + font.height : textYOffset - 2;
+  auto textYOffset = 1, dotsYOffset = textYOffset + font.height;
 
   return [=](uint32_t &) {
     matrix.clear();
@@ -213,6 +229,7 @@ void Submitter::loop() [[noreturn]] {
   matrix.stroke(0xFFFFFF);
   matrix.textFont(font);
   matrix.beginText(0, 0, 0xFFFFFF);
+  auto &LCDinterrupt = matrix.*get(ArduinoLEDMatrixBackdoor());
   MSerial()->print("submitter: started lcd\n");
   gotInput();
   auto notice = [this](auto &&msg, int millis = 5000) {
@@ -241,8 +258,12 @@ void Submitter::loop() [[noreturn]] {
     auto action = preview();
     if (action.timedOut) {
       if (debug) MSerial()->print("submitter: idling\n");
+      LCDinterrupt.stop();
+      xTimerStop(buttons::measurementTimer(), portMAX_DELAY);
       action = idling();
     }
+    LCDinterrupt.start();
+    xTimerStart(buttons::measurementTimer(), portMAX_DELAY);
     gotInput();
     if (action != Action::OK) continue;
     auto &config = blastic::config.submit;
