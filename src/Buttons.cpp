@@ -31,11 +31,16 @@ namespace buttons {
 
 DebouncedTouchSensor sensors[n];
 
-void reset(const Config &configs) {
+TimerHandle_t measurementTimer() {
   static StaticTimer_t timerBuff;
-  // this timer makes sure that we are measuring the capacitors every 50ms at least
   static TimerHandle_t timer = xTimerCreateStatic(
-      "QECapMeasure", pdMS_TO_TICKS(50), true, nullptr, [](TimerHandle_t) { startTouchMeasurement(false); }, &timerBuff);
+      "QECapMeasure", pdMS_TO_TICKS(50), true, nullptr, [](TimerHandle_t) { startTouchMeasurement(false); },
+      &timerBuff);
+  return timer;
+}
+
+void reset(const Config &configs) {
+  auto timer = measurementTimer();
   xTimerStop(timer, portMAX_DELAY);
   stopTouchMeasurement();
   // we need to undo the changes to the CTSU made by setTouchMode
