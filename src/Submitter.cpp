@@ -57,11 +57,10 @@ static util::loopFunction scroll(std::string &&str, unsigned int initialDelay = 
 }
 
 /*
-  Show a float value on screen.
+  Show a float absolute value on screen.
 
   This function is optimized for small displays. On the Arduino UNO R4 WiFi, it shows 3 most significant digits.
-  Points are drawn to indicate the order: the normal decimal point is drawn below the text line (above if the number
-  is negative).
+  Points are drawn to indicate the order: the normal decimal point is drawn below the text line.
 
   If the position of the decimal point would be beyond the led matrix width (very large or very small
   numbers), additional leds are turned on. With 3 digits, there are 2 cases:
@@ -69,8 +68,6 @@ static util::loopFunction scroll(std::string &&str, unsigned int initialDelay = 
   plus 2 points to the right
   - numbers < 0.01: additional points are shown on the left in addition to the normal floating decimal point. For
   example, 0.00543 is shown as "543" with 3 dots to the left.
-
-  Negative numbers do not show a minus sign (-), but rather the position of the point is shown above the digits.
 */
 
 static util::loopFunction show(float v) {
@@ -106,11 +103,8 @@ static util::loopFunction show(float v) {
   // loop over the fractional part (fav) digits
   for (auto digitsEnd = strStart + digits; fractionalPtr < digitsEnd; fractionalPtr++, fav = modf(fav, &iav) * 10)
     *fractionalPtr = '0' + uint8_t(fav);
-  // value positive: value aligned to top, dots below value
-  // value negative: value aligned to bottom, dots above value
   // with the 4x6 font numbers are actually 3x5, so align dots at Y offset 6
-  auto textYOffset = v >= 0 ? 0 : matrixHeight - font.height,
-       dotsYOffset = v >= 0 ? textYOffset + font.height : textYOffset - 2;
+  auto textYOffset = 1, dotsYOffset = textYOffset + font.height;
 
   return [=](uint32_t &) {
     matrix.clear();
