@@ -36,6 +36,26 @@ template <> auto upgradeOnce(const Config<Header::currentVersion> &o) {
   return o;
 }
 
+template <> struct Config<0> {
+
+  Header header;
+
+  scale::Config scale;
+  WifiConnection::Config wifi;
+  blastic::Submitter::Config submit;
+  buttons::Config buttons;
+};
+
+template <> auto upgradeOnce(const Config<0> &o) {
+  Config<1> upgraded;
+  upgraded.defaults();
+  upgraded.scale = o.scale;
+  upgraded.wifi = o.wifi;
+  upgraded.submit = o.submit;
+  upgraded.buttons = o.buttons;
+  return upgraded;
+}
+
 namespace {
 
 template <uint32_t... versions> auto makeConfigVariant(std::integer_sequence<uint32_t, versions...>) {
@@ -57,7 +77,7 @@ std::unique_ptr<ConfigVariant> readConfigVariant(uint32_t eepromVersion) {
     return variant;
   }
   if constexpr (version > 0) return readConfigVariant<version - 1>(eepromVersion);
-  error:
+error:
   return {};
 }
 
@@ -69,12 +89,12 @@ inline void sanitizeStringBuffers(util::StringBuffer<size> &str, Rest &&...rest)
 }
 
 template <uint32_t version = Header::currentVersion> constexpr size_t getMaxConfigLength(size_t max = 0) {
-  size_t size = sizeof(Config<version>);
+  constexpr const size_t size = sizeof(Config<version>);
   if constexpr (!version) return max > size ? max : size;
-  else return maxConfigLength<version - 1>(max > size ? max : size);
+  else return getMaxConfigLength<version - 1>(max > size ? max : size);
 }
 
-static_assert(getMaxConfigLength() <= FLASH_TOTAL_SIZE);
+static_assert(getMaxConfigLength<>() <= FLASH_TOTAL_SIZE);
 
 } // namespace
 
@@ -117,6 +137,7 @@ void Config<>::defaults() {
       .pin = 9,
       .threshold = 4513,
       .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 186, .count = 1}};
+  sdcard.CSPin = 10;
 };
 
 IOret Config<>::load() {

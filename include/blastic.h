@@ -14,6 +14,7 @@
 #include "WifiConnection.h"
 #include "Buttons.h"
 #include "Submitter.h"
+#include "SDCard.h"
 
 namespace blastic {
 
@@ -28,7 +29,7 @@ enum class IOret { OK, ERROR, UPGRADED, NOT_FOUND, UNKONWN_VERSION };
 
 struct Header {
   static constexpr const uint32_t expectedSignature = ((uint32_t('B') << 8 | 'L') << 8 | 'S') << 8 | 'C',
-                                  currentVersion = 0;
+                                  currentVersion = 1;
   uint32_t signature, version;
 };
 
@@ -41,6 +42,7 @@ template <> struct Config<Header::currentVersion> {
   WifiConnection::Config wifi;
   blastic::Submitter::Config submit;
   buttons::Config buttons;
+  SDCard::Config sdcard;
 
   IOret load();
   IOret save() const;

@@ -17,7 +17,7 @@ namespace blastic {
   object goes out of scope, but it is kept around for a configurable timeout.
 */
 
-class WifiConnection : public util::Mutexed<WiFi> {
+class WifiConnection : public util::Mutexed<::WiFi> {
 public:
   static const bool ipConnectBroken;
   static bool firmwareCompatible();

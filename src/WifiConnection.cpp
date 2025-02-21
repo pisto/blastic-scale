@@ -40,7 +40,7 @@ bool WifiConnection::firmwareCompatible() {
   return strcmp(wifi->firmwareVersion(), WIFI_FIRMWARE_LATEST_VERSION) >= 0;
 }
 
-WifiConnection::WifiConnection(const Config &config) : util::Mutexed<WiFi>() {
+WifiConnection::WifiConnection(const Config &config) : util::Mutexed<::WiFi>() {
   configASSERT(firmwareCompatible());
   constexpr const uint32_t dhcpPollInterval = 100;
   auto &wifi = *this;
