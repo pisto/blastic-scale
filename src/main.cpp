@@ -37,11 +37,14 @@ void setup() {
   while (!Serial);
   Serial.print("setup: booting blastic-scale version ");
   Serial.println(version);
-  switch (config.load()) {
+  auto [ioret, version] = config.load();
+  switch (ioret) {
   case eeprom::IOret::UPGRADED: Serial.print("setup: eeprom saved config converted from older version\n");
   case eeprom::IOret::OK:
     if (!config.sanitize()) Serial.print("setup: config had to be sanitized, eeprom is likely corrupted\n");
-    Serial.print("setup: loaded configuration from eeprom\n");
+    Serial.print("setup: loaded configuration from eeprom version ");
+    Serial.print(version);
+    Serial.println();
     break;
   default:
     config.defaults();

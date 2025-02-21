@@ -140,19 +140,28 @@ void Config<>::defaults() {
   sdcard.CSPin = 10;
 };
 
-IOret Config<>::load() {
+std::tuple<IOret, uint32_t> Config<>::load() {
+  auto ret = std::make_tuple(IOret::ERROR, uint32_t(0));
   auto &flash = DataFlashBlockDevice::getInstance();
   Header eepromHeader;
-  if (flash.read(&eepromHeader, 0, sizeof(eepromHeader)) != FSP_SUCCESS) return IOret::ERROR;
-  if (eepromHeader.signature != Header::expectedSignature) return IOret::NOT_FOUND;
-  if (eepromHeader.version > Header::currentVersion) return IOret::UNKONWN_VERSION;
+  if (flash.read(&eepromHeader, 0, sizeof(eepromHeader)) != FSP_SUCCESS) return ret;
+  if (eepromHeader.signature != Header::expectedSignature) {
+    std::get<0>(ret) = IOret::NOT_FOUND;
+    return ret;
+  }
+  std::get<1>(ret) = eepromHeader.version;
+  if (eepromHeader.version > Header::currentVersion) {
+    std::get<0>(ret) = IOret::UNKONWN_VERSION;
+    return ret;
+  }
   auto configVariant = readConfigVariant(eepromHeader.version);
-  if (configVariant->valueless_by_exception()) return IOret::ERROR;
+  if (configVariant->valueless_by_exception()) return ret;
   while (configVariant->index() < std::variant_size_v<ConfigVariant> - 1)
     *configVariant = std::visit([](auto &&configOldVersion) { return upgradeOnce(configOldVersion); }, *configVariant);
   *this = std::get<eeprom::Config<>>(*configVariant);
   header = {.signature = Header::expectedSignature, .version = Header::currentVersion};
-  return eepromHeader.version < header.version ? IOret::UPGRADED : IOret::OK;
+  std::get<0>(ret) = eepromHeader.version < header.version ? IOret::UPGRADED : IOret::OK;
+  return ret;
 }
 
 bool Config<>::sanitize() {

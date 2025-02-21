@@ -4,6 +4,8 @@
 #error Define the serial baud rate in BLASTIC_MONITOR_SPEED
 #endif
 
+#include <tuple>
+
 // environment
 #include <Arduino.h>
 #include <Arduino_FreeRTOS.h>
@@ -44,7 +46,7 @@ template <> struct Config<Header::currentVersion> {
   buttons::Config buttons;
   SDCard::Config sdcard;
 
-  IOret load();
+  std::tuple<IOret, uint32_t> load();
   IOret save() const;
   bool sanitize();
   void defaults();
