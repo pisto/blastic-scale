@@ -129,13 +129,13 @@ static void tare(WordSplit &) {
 static void calibrate(WordSplit &args) {
   auto weightString = args.nextWord();
   if (!weightString) {
-    MSerial()->print("scale::calibrate: missing test weight argument\n");
+    MSerial()->print("scale::calibrate: missing probe weight argument\n");
     return;
   }
   char *weightEnd;
   auto weight = strtof(weightString, &weightEnd);
   if (weightString == weightEnd) {
-    MSerial()->print("scale::calibrate: cannot parse test weight argument\n");
+    MSerial()->print("scale::calibrate: cannot parse probe weight argument\n");
     return;
   }
   auto value = raw(config.scale, scaleCliMaxMedianWidth, pdMS_TO_TICKS(scaleCliTimeout));
@@ -476,6 +476,19 @@ static void blank(WordSplit &args) {
 
 } // namespace eeprom
 
+namespace sd {
+
+static void probe(WordSplit &) {
+  bool ok;
+  {
+    SDCard sd;
+  }
+  MSerial serial;
+  serial->print("sd::probe: ");
+  serial->print(ok ? "ok\n" : "error\n");
+}
+
+} // namespace sd
 static constexpr const CliCallback callbacks[]{makeCliCallback(version),
                                                makeCliCallback(uptime),
                                                makeCliCallback(debug),
@@ -499,6 +512,7 @@ static constexpr const CliCallback callbacks[]{makeCliCallback(version),
                                                CliCallback("eeprom::export", eeprom::export_),
                                                makeCliCallback(eeprom::defaults),
                                                makeCliCallback(eeprom::blank),
+                                               makeCliCallback(sd::probe),
                                                CliCallback()};
 
 } // namespace cli
