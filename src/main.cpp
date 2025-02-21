@@ -71,7 +71,7 @@ static void uptime(WordSplit &) {
   serial->print('h');
   serial->print(s / 60);
   serial->print('m');
-  serial->print(s);
+  serial->print(s % 60);
   serial->print("s\n");
 }
 
