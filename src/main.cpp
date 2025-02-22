@@ -57,6 +57,12 @@ void setup() {
   Serial.print("setup: done\n");
 }
 
+/*
+  Annoyingly, the SD.begin() API cannot return failure reasons unless a private member is accessed.
+*/
+
+ClassPrivateMemberAccessor(SDClass, Sd2Card, card)
+
 namespace cli {
 
 using namespace blastic;
@@ -483,12 +489,26 @@ namespace sd {
 
 static void probe(WordSplit &) {
   bool ok;
+  uint8_t status, error, type;
   {
     SDCard sd;
+    ok = sd;
+    auto &card = (*sd).*get(util::SDClassBackdoor());
+    status = card.errorCode();
+    error = card.errorData();
+    type = card.type();
   }
   MSerial serial;
   serial->print("sd::probe: ");
-  serial->print(ok ? "ok\n" : "error\n");
+  if (ok) {
+    serial->print("ok type ");
+    serial->println(type);
+  } else {
+    serial->print("error status ");
+    serial->print(status);
+    serial->print(' ');
+    serial->println(error);
+  }
 }
 
 } // namespace sd
