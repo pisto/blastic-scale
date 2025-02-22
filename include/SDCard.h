@@ -17,7 +17,7 @@ public:
     uint8_t CSPin;
   };
 
-  SDCard() : util::Mutexed<::SD>(), initialized((*this)->begin()) {}
+  SDCard(uint8_t CSPin) : util::Mutexed<::SD>(), initialized((*this)->begin(CSPin)) {}
   ~SDCard() {
     if (initialized) (*this)->end();
   }

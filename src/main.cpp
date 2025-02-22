@@ -37,13 +37,13 @@ void setup() {
   while (!Serial);
   Serial.print("setup: booting blastic-scale version ");
   Serial.println(version);
-  auto [ioret, version] = config.load();
+  auto [ioret, configVersion] = config.load();
   switch (ioret) {
   case eeprom::IOret::UPGRADED: Serial.print("setup: eeprom saved config converted from older version\n");
   case eeprom::IOret::OK:
     if (!config.sanitize()) Serial.print("setup: config had to be sanitized, eeprom is likely corrupted\n");
     Serial.print("setup: loaded configuration from eeprom version ");
-    Serial.print(version);
+    Serial.print(configVersion);
     Serial.println();
     break;
   default:
@@ -96,6 +96,11 @@ static void debug(WordSplit &args) {
   MSerial serial;
   serial->print("debug: ");
   serial->println(blastic::debug);
+}
+
+static void sleep(WordSplit &args) {
+  auto arg = args.nextWord() ?: "0";
+  vTaskDelay(pdMS_TO_TICKS(atoi(arg) * 1000));
 }
 
 namespace scale {
@@ -491,7 +496,7 @@ static void probe(WordSplit &) {
   bool ok;
   uint8_t status, error, type;
   {
-    SDCard sd;
+    SDCard sd(config.sdcard.CSPin);
     ok = sd;
     auto &card = (*sd).*get(util::SDClassBackdoor());
     status = card.errorCode();
@@ -515,6 +520,7 @@ static void probe(WordSplit &) {
 static constexpr const CliCallback callbacks[]{makeCliCallback(version),
                                                makeCliCallback(uptime),
                                                makeCliCallback(debug),
+                                               makeCliCallback(sleep),
                                                makeCliCallback(scale::mode),
                                                makeCliCallback(scale::tare),
                                                makeCliCallback(scale::calibrate),

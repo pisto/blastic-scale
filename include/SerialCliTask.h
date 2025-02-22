@@ -17,7 +17,8 @@ namespace details {
 struct SerialCliTaskState {
   const CliCallback *const callbacks;
 };
-void loop(const SerialCliTaskState &_this, Stream &input, util::MutexedGenerator<Print> outputMutexGen) [[noreturn]];
+void consumeAutostartFiles(const SerialCliTaskState &_this, util::MutexedGenerator<Print> outputMutexGen);
+void loop(const SerialCliTaskState &_this, Stream &input, util::MutexedGenerator<Print> outputMutexGen, bool loop);
 
 } // namespace details
 
@@ -41,7 +42,7 @@ public:
 
 private:
   friend void details::loop(const details::SerialCliTaskState &_this, Stream &input,
-                            util::MutexedGenerator<Print> outputMutexGen) [[noreturn]];
+                            util::MutexedGenerator<Print> outputMutexGen, bool loop);
 
   const uint32_t cliCommandHash;
   const CliFunctionPointer function;
@@ -148,7 +149,8 @@ private:
   util::StaticTask<StackSize> task;
   static void loop(void *me) [[noreturn]] {
     auto &_this = *reinterpret_cast<SerialCliTask *>(me);
-    details::loop(_this._this, serial, util::MutexedGenerator<Print>::get<serial>());
+    details::consumeAutostartFiles(_this._this, util::MutexedGenerator<Print>::get<serial>());
+    details::loop(_this._this, serial, util::MutexedGenerator<Print>::get<serial>(), true);
   }
 };
 
