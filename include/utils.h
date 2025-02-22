@@ -36,13 +36,13 @@ template <typename Tag, typename Tag::type M> struct ClassPrivateMemberBackdoor 
 
 // use this macro to define the necessary template specializations
 
-#define ClassPrivateMemberAccessor(class, memberType, member) \
-  namespace util { \
-  struct class ## Backdoor { \
-    typedef memberType class::*type; \
-    friend type get(class ## Backdoor); \
-  }; \
-  template struct ClassPrivateMemberBackdoor<class ## Backdoor, &class::member>; \
+#define ClassPrivateMemberAccessor(class, memberType, member)                                                          \
+  namespace util {                                                                                                     \
+  struct class##Backdoor {                                                                                             \
+    typedef memberType class ::*type;                                                                                  \
+    friend type get(class##Backdoor);                                                                                  \
+  };                                                                                                                   \
+  template struct ClassPrivateMemberBackdoor<class##Backdoor, &class ::member>;                                        \
   }
 
 } // namespace util

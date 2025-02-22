@@ -25,3 +25,9 @@ public:
 };
 
 } // namespace blastic
+
+/*
+  Annoyingly, the SD.begin() API cannot return failure reasons unless a private member is accessed.
+*/
+
+ClassPrivateMemberAccessor(SDClass, Sd2Card, card);

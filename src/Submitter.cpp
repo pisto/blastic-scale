@@ -6,13 +6,14 @@
 #include <Arduino_LED_Matrix.h>
 #include <ArduinoHttpClient.h>
 #include "utils.h"
+#include "SDCard.h"
 
 /*
   Annoyingly, the ArduinoLEDMatrix timer interrupt cannot be stopped.
   Here use some magic to access its FspTimer member to be able to stop it manually on demand.
 */
 
-ClassPrivateMemberAccessor(ArduinoLEDMatrix, FspTimer, _ledTimer)
+ClassPrivateMemberAccessor(ArduinoLEDMatrix, FspTimer, _ledTimer);
 
 namespace blastic {
 
@@ -208,6 +209,8 @@ static constexpr const char userAgent[] = "blastic-scale/" BLASTIC_GIT_COMMIT " 
   Main submitter logic and UI.
 */
 
+const char *const CSVHeader = "collectionPoint,collectorName,type,weight";
+
 void Submitter::loop() [[noreturn]] {
   matrix.begin();
   matrix.background(0);
@@ -274,7 +277,7 @@ void Submitter::loop() [[noreturn]] {
     painter = scroll("...");
     auto weight = scale::weight(blastic::config.scale, 10);
     if (!(weight >= config.threshold)) {
-      if (weight < config.threshold) notice("<=0");
+      if (weight < config.threshold) notice("<<1");
       else notice("bad value");
       continue;
     }
@@ -288,6 +291,40 @@ void Submitter::loop() [[noreturn]] {
     if (plastic.timedOut) continue;
     painter = scroll(plasticName(plastic), 200, 100, 2);
     xTaskNotifyWait(0, -1, nullptr, pdMS_TO_TICKS(2000));
+    const char *SDNotice = nullptr;
+    {
+      SDCard sd(blastic::config.sdcard.CSPin);
+      if (!sd) {
+        auto &card = (*sd).*get(util::SDClassBackdoor());
+        if (card.errorCode() != SD_CARD_ERROR_CMD0) {
+          MSerial()->print("submitter: failed to open SD card to log the measurement\n");
+          SDNotice = "SD card error";
+        }
+        goto SDEnd;
+      }
+      auto csv = sd->open("data.csv", O_CREAT | O_APPEND | O_WRITE);
+      if (!csv) {
+        MSerial()->print("submitter: cannot open file data.csv for writing\n");
+        SDNotice = "CSV open err";
+        goto SDEnd;
+      }
+      if (!csv.size()) csv.println(CSVHeader);
+      csv.print(config.collectionPoint);
+      csv.print(',');
+      csv.print(config.collectorName);
+      csv.print(',');
+      csv.print(plasticName(plastic));
+      csv.print(',');
+      csv.println(weight);
+      csv.close();
+      if (csv.getWriteError()) {
+        MSerial serial;
+        serial->print("submitter: could not write all data to data.csv\n");
+        SDNotice = "CSV write err";
+      } else if (debug) MSerial()->print("submitter: entry written successfully to csv\n");
+    }
+  SDEnd:
+    if (SDNotice) notice(SDNotice);
     if (!WifiConnection::firmwareCompatible()) {
       notice("upgrade wifi firmware", 10000);
       continue;
