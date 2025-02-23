@@ -117,26 +117,26 @@ void Config<>::defaults() {
   submit.form.collectionPoint = "entry.458823532";
   submit.form.collectorName = "entry.649832752";
   submit.form.weight = "entry.1219969504";
-  // OK
-  buttons[0] = {
-      .pin = 3,
-      .threshold = 5234,
-      .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 157, .count = 1}};
-  // NEXT
-  buttons[1] = {
-      .pin = 8,
-      .threshold = 3698,
-      .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 178, .count = 1}};
-  // PREVIOUS
-  buttons[2] = {
-      .pin = 6,
-      .threshold = 3698,
-      .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 237, .count = 1}};
-  // BACK
-  buttons[3] = {
-      .pin = 9,
-      .threshold = 4513,
-      .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 186, .count = 1}};
+   // OK
+   buttons[0] = {
+    .pin = 3,
+    .threshold = 5234,
+    .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 157, .count = 1}};
+// NEXT
+buttons[1] = {
+    .pin = 6,
+    .threshold = 3698,
+    .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 237, .count = 1}};
+// PREVIOUS
+buttons[2] = {
+    .pin = 8,
+    .threshold = 2967,
+    .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 178, .count = 1}};
+// BACK
+buttons[3] = {
+    .pin = 9,
+    .threshold = 4513,
+    .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 186, .count = 1}};
   sdcard.CSPin = 10;
 };
 
