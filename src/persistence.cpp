@@ -101,43 +101,43 @@ static_assert(getMaxConfigLength<>() <= FLASH_TOTAL_SIZE);
 const uint32_t maxConfigLength = getMaxConfigLength();
 
 void Config<>::defaults() {
-memset(this, 0, sizeof(*this));
-header = {.signature = eeprom::Header::expectedSignature, .version = eeprom::Header::currentVersion};
-scale = {.dataPin = 5,
-          .clockPin = 4,
-          .mode = scale::HX711Mode::A128,
-          .calibrations = {// A128 mode by default, calibration parameters that work for me, but not for thee
-                          {.tareRawRead = 45527, .weightRawRead = 114810, .weight = 1.56}}};
-wifi.dhcpTimeout = wifi.disconnectTimeout = 10;
-submit.threshold = 0.05;
-submit.collectionPoint = "BlastPersis";
-submit.collectorName = "BSPers";
-submit.form.urn = "docs.google.com/forms/d/e/1FAIpQLSeI3jofIWqtWghblVPOTO1BtUbE8KmoJsGRJuRAu2ceEMIJFw/formResponse";
-submit.form.type = "entry.826036805";
-submit.form.collectionPoint = "entry.458823532";
-submit.form.collectorName = "entry.649832752";
-submit.form.weight = "entry.1219969504";
-// OK
-buttons[0] = {
-  .pin = 3,
-  .threshold = 5234,
-  .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 157, .count = 1}};
-// NEXT
-buttons[1] = {
- .pin = 6,
- .threshold = 3698,
- .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 237, .count = 1}};
-// PREVIOUS
-buttons[2] = {
- .pin = 8,
- .threshold = 2967,
- .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 178, .count = 1}};
-// BACK
-buttons[3] = {
- .pin = 9,
- .threshold = 4513,
- .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 186, .count = 1}};
-sdcard.CSPin = 10;
+  memset(this, 0, sizeof(*this));
+  header = {.signature = eeprom::Header::expectedSignature, .version = eeprom::Header::currentVersion};
+  scale = {.dataPin = 5,
+           .clockPin = 4,
+           .mode = scale::HX711Mode::A128,
+           .calibrations = {// A128 mode by default, calibration parameters that work for me, but not for thee
+                            {.tareRawRead = 45527, .weightRawRead = 114810, .weight = 1.56}}};
+  wifi.dhcpTimeout = wifi.disconnectTimeout = 10;
+  submit.threshold = 0.05;
+  submit.collectionPoint = "BlastPersis";
+  submit.collectorName = "BSPers";
+  submit.form.urn = "docs.google.com/forms/d/e/1FAIpQLSeI3jofIWqtWghblVPOTO1BtUbE8KmoJsGRJuRAu2ceEMIJFw/formResponse";
+  submit.form.type = "entry.826036805";
+  submit.form.collectionPoint = "entry.458823532";
+  submit.form.collectorName = "entry.649832752";
+  submit.form.weight = "entry.1219969504";
+  // OK
+  buttons[0] = {
+      .pin = 3,
+      .threshold = 5234,
+      .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 157, .count = 1}};
+  // NEXT
+  buttons[1] = {
+      .pin = 6,
+      .threshold = 3698,
+      .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 237, .count = 1}};
+  // PREVIOUS
+  buttons[2] = {
+      .pin = 8,
+      .threshold = 2967,
+      .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 178, .count = 1}};
+  // BACK
+  buttons[3] = {
+      .pin = 9,
+      .threshold = 4513,
+      .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 186, .count = 1}};
+  sdcard.CSPin = 10;
 };
 
 std::tuple<IOret, uint32_t> Config<>::load() {
