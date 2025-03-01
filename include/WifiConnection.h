@@ -40,8 +40,7 @@ public:
   static util::Looper<1024> &background();
 
 private:
-  Layer3(bool);
-  const bool skipDisconnectTimer;
+  const bool backgroundJob;
 };
 
 /*

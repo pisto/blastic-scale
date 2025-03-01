@@ -23,16 +23,16 @@ void startSync(const Config &config, bool force) {
   if (!force && lastSyncEpoch && unixTime() - lastSyncEpoch < 24 * 60 * 60) return;
   using namespace wifi;
   Layer3::background().set(
-      [config](uint32_t) {
+      [hostname = String(config.hostname)](uint32_t) {
         Layer3 wifi;
         if (!wifi) return blastic::MSerial()->print("ntpsync: no wifi connection\n"), portMAX_DELAY;
-        WiFiUDP udp;
-        NTPClient ntp(udp, config.hostname);
-        ntp.begin();
-        ntp.forceUpdate();
-        ntp.end();
-        if (!ntp.isTimeSet()) return blastic::MSerial()->print("ntpsync: failed to sync\n"), portMAX_DELAY;
-        lastSyncEpoch = ntp.getEpochTime();
+        auto udp = std::make_unique<WiFiUDP>();
+        auto ntp = std::make_unique<NTPClient>(*udp, hostname.c_str());
+        ntp->begin();
+        ntp->forceUpdate();
+        ntp->end();
+        if (!ntp->isTimeSet()) return blastic::MSerial()->print("ntpsync: failed to sync\n"), portMAX_DELAY;
+        lastSyncEpoch = ntp->getEpochTime();
         offsetToUnixTime = lastSyncEpoch - updateRealTimeSeconds();
         blastic::MSerial serial;
         serial->print("ntpsync: synced at ");

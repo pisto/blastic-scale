@@ -17,7 +17,7 @@ util::Looper<1024> &Layer3::background() {
   return background;
 }
 
-Layer3::Layer3(const Config &config) : util::Mutexed<::WiFi>(), skipDisconnectTimer(false) {
+Layer3::Layer3(const Config &config) : util::Mutexed<::WiFi>(), backgroundJob(false) {
   if (!firmwareCompatible()) return;
   constexpr const uint32_t dhcpPollInterval = 100;
   auto &wifi = **this;
@@ -51,6 +51,7 @@ int SSLClient::read(uint8_t *buf, size_t size) {
 }
 
 Layer3::~Layer3() {
+  if (backgroundJob) return;
   static int lastUsage;
   lastUsage = millis();
   static StaticTimer_t disconnectTimerBuff;
@@ -59,7 +60,7 @@ Layer3::~Layer3() {
       [](TimerHandle_t) {
         background().set(
             [](uint32_t) {
-              Layer3 wifi(true);
+              Layer3 wifi;
               if (millis() - lastUsage > config.wifi.idleTimeout * 1000) {
                 wifi->end();
                 if (debug) MSerial()->print("wifi::idle: disconnected\n");
@@ -69,11 +70,9 @@ Layer3::~Layer3() {
             0);
       },
       &disconnectTimerBuff);
-  if (!skipDisconnectTimer)
-    configASSERT(xTimerChangePeriod(disconnectTimer, pdMS_TO_TICKS(config.wifi.idleTimeout * 1000), portMAX_DELAY));
+  configASSERT(xTimerChangePeriod(disconnectTimer, pdMS_TO_TICKS(config.wifi.idleTimeout * 1000), portMAX_DELAY));
 }
 
-Layer3::Layer3() : util::Mutexed<::WiFi>(), skipDisconnectTimer(false) {}
-Layer3::Layer3(bool) : util::Mutexed<::WiFi>(), skipDisconnectTimer(true) {}
+Layer3::Layer3() : util::Mutexed<::WiFi>(), backgroundJob(true) {}
 
 } // namespace wifi
