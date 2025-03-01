@@ -43,6 +43,13 @@ constexpr const uint32_t minReadDelayMillis = 1000 / 80; // max output rate is 8
 */
 int32_t raw(const Config &config, size_t medianWidth = 1, TickType_t timeout = portMAX_DELAY);
 
+namespace debug {
+
+// force a fake read
+extern int32_t fake;
+
+} // namespace debug
+
 /*
   As above, but return a computed weight using calibration data.
 */

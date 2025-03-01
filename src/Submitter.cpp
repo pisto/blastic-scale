@@ -214,15 +214,6 @@ static constexpr const char userAgent[] = "blastic-scale/" BLASTIC_GIT_COMMIT " 
 const char *const CSVHeader = "collectionPoint,collectorName,type,epoch,weight";
 
 void Submitter::loop() [[noreturn]] {
-  // initial ntp sync attempt. Delegate connection to background to keep buttons and leds responsive
-  if (strlen(blastic::config.ntp.hostname)) {
-    wifi::Layer3::backgroundLoop() = [](uint32_t) {
-      wifi::Layer3 l3(blastic::config.wifi);
-      ntp::startSync(blastic::config.ntp);
-      return portMAX_DELAY;
-    };
-  }
-
   // display initialization
   matrix.begin();
   matrix.background(0);
@@ -328,16 +319,12 @@ void Submitter::loop() [[noreturn]] {
         SDNotice = "CSV open err";
         goto SDEnd;
       }
-      auto epoch = ntp::unixTime();
-      if (!epoch) notice("time unset");
       if (!csv.size()) csv.println(CSVHeader);
       csv.print(config.collectionPoint);
       csv.print(',');
       csv.print(config.collectorName);
       csv.print(',');
       csv.print(plasticName(plastic));
-      csv.print(',');
-      csv.println(epoch);
       csv.print(',');
       csv.println(weight);
       csv.close();
@@ -365,7 +352,6 @@ void Submitter::loop() [[noreturn]] {
         notice("wifi error");
         continue;
       }
-      if (strlen(blastic::config.ntp.hostname)) ntp::startSync(blastic::config.ntp);
       SSLClient tls;
       if (!tls.connect(serverAddress, HttpClient::kHttpsPort)) {
         MSerial()->print("submitter: failed to connect to server\n");

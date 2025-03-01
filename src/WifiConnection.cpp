@@ -12,9 +12,9 @@ bool Layer3::firmwareCompatible() {
   return strcmp(wifi->firmwareVersion(), WIFI_FIRMWARE_LATEST_VERSION) >= 0;
 }
 
-util::Looper<1024> &Layer3::backgroundLoop() {
-  static util::Looper<1024> backgroundLoop("backgroundLoop", tskIDLE_PRIORITY + 1);
-  return backgroundLoop;
+util::Looper<1024> &Layer3::background() {
+  static util::Looper<1024> background("Layer3Background", tskIDLE_PRIORITY + 1);
+  return background;
 }
 
 Layer3::Layer3(const Config &config) : util::Mutexed<::WiFi>(), skipDisconnectTimer(false) {
@@ -26,7 +26,7 @@ Layer3::Layer3(const Config &config) : util::Mutexed<::WiFi>(), skipDisconnectTi
       WL_CONNECTED)
     return;
   auto dhcpStart = millis();
-  while (!wifi.localIP() && millis() - dhcpStart < config.dhcpTimeout * 1000) vTaskDelay(dhcpPollInterval);
+  while (!*this && millis() - dhcpStart < config.dhcpTimeout * 1000) vTaskDelay(dhcpPollInterval);
 }
 
 Layer3::operator bool() const {
@@ -57,17 +57,20 @@ Layer3::~Layer3() {
   static TimerHandle_t disconnectTimer = xTimerCreateStatic(
       "WiFidisconnect", 1, false, nullptr,
       [](TimerHandle_t) {
-        backgroundLoop().set(
+        background().set(
             [](uint32_t) {
               Layer3 wifi(true);
-              if (millis() - lastUsage > config.wifi.disconnectTimeout * 1000) wifi->end();
+              if (millis() - lastUsage > config.wifi.idleTimeout * 1000) {
+                wifi->end();
+                if (debug) MSerial()->print("wifi::idle: disconnected\n");
+              }
               return portMAX_DELAY;
             },
             0);
       },
       &disconnectTimerBuff);
   if (!skipDisconnectTimer)
-    configASSERT(xTimerChangePeriod(disconnectTimer, pdMS_TO_TICKS(config.wifi.disconnectTimeout * 1000), portMAX_DELAY));
+    configASSERT(xTimerChangePeriod(disconnectTimer, pdMS_TO_TICKS(config.wifi.idleTimeout * 1000), portMAX_DELAY));
 }
 
 Layer3::Layer3() : util::Mutexed<::WiFi>(), skipDisconnectTimer(false) {}

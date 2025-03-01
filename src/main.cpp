@@ -91,6 +91,35 @@ static void debug(WordSplit &args) {
   serial->println(blastic::debug);
 }
 
+#if (configUSE_TRACE_FACILITY == 1)
+
+static void tasks(WordSplit &) {
+  vTaskSuspendAll();
+  const auto taskCount = uxTaskGetNumberOfTasks();
+  auto tasks = std::make_unique<TaskStatus_t[]>(taskCount);
+  bool ok = uxTaskGetSystemState(tasks.get(), taskCount, nullptr);
+  xTaskResumeAll();
+  MSerial serial;
+  if (!ok) {
+    serial->print("tasks: no tasks returned\n");
+    return;
+  }
+  for (int i = 0; i < taskCount; i++) {
+    serial->print("tasks: ");
+    auto &task = tasks[i];
+    serial->print(task.pcTaskName);
+    serial->print(" state ");
+    serial->print(task.eCurrentState);
+#if (INCLUDE_uxTaskGetStackHighWaterMark == 1)
+    serial->print(" high ");
+    serial->print(task.usStackHighWaterMark);
+#endif
+    serial->println();
+  }
+}
+
+#endif
+
 static void sleep(WordSplit &args) {
   auto arg = args.nextWord() ?: "0";
   vTaskDelay(pdMS_TO_TICKS(atoi(arg) * 1000));
@@ -191,6 +220,14 @@ static void weight(WordSplit &args) {
   else serial->println(value);
 }
 
+static void fake(WordSplit &args) {
+  auto fake = args.nextWord();
+  if (fake) scale::debug::fake = atoi(fake);
+  MSerial serial;
+  serial->print("scale::fake: ");
+  serial->println(scale::debug::fake);
+}
+
 } // namespace scale
 
 namespace wifi {
@@ -216,11 +253,11 @@ static void timeout(WordSplit &args) {
   if (auto timeoutString = args.nextWord()) {
     char *timeoutEnd;
     auto timeout = strtoul(timeoutString, &timeoutEnd, 10);
-    if (timeoutString != timeoutEnd) config.wifi.disconnectTimeout = timeout;
+    if (timeoutString != timeoutEnd) config.wifi.idleTimeout = timeout;
   }
   MSerial serial;
   serial->print("wifi::timeout: ");
-  serial->println(config.wifi.disconnectTimeout);
+  serial->println(config.wifi.idleTimeout);
 }
 
 static void ssid(WordSplit &args) {
@@ -517,6 +554,14 @@ static void probe(WordSplit &) {
 
 namespace ntp {
 
+static void hostname(WordSplit &args) {
+  auto hostname = args.nextWord();
+  if (hostname && *hostname) config.ntp.hostname = hostname;
+  MSerial serial;
+  serial->print("ntp::hostname: ");
+  serial->println(config.ntp.hostname);
+}
+
 static void epoch(WordSplit &) {
   int epoch = ::ntp::unixTime();
   MSerial serial;
@@ -550,6 +595,9 @@ static void sync(WordSplit &) {
 static constexpr const CliCallback callbacks[]{makeCliCallback(version),
                                                makeCliCallback(uptime),
                                                makeCliCallback(debug),
+#if (configUSE_TRACE_FACILITY == 1)
+                                               makeCliCallback(tasks),
+#endif
                                                makeCliCallback(sleep),
                                                makeCliCallback(scale::mode),
                                                makeCliCallback(scale::tare),
@@ -557,6 +605,7 @@ static constexpr const CliCallback callbacks[]{makeCliCallback(version),
                                                makeCliCallback(scale::configuration),
                                                makeCliCallback(scale::raw),
                                                makeCliCallback(scale::weight),
+                                               makeCliCallback(scale::fake),
                                                makeCliCallback(wifi::status),
                                                makeCliCallback(wifi::ssid),
                                                makeCliCallback(wifi::password),
@@ -572,6 +621,7 @@ static constexpr const CliCallback callbacks[]{makeCliCallback(version),
                                                makeCliCallback(eeprom::defaults),
                                                makeCliCallback(eeprom::blank),
                                                makeCliCallback(sd::probe),
+                                               makeCliCallback(ntp::hostname),
                                                makeCliCallback(ntp::epoch),
                                                makeCliCallback(ntp::sync),
                                                CliCallback()};

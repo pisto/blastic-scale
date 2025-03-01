@@ -9,10 +9,21 @@ namespace scale {
 static StaticSemaphore_t mutexBuffer;
 static SemaphoreHandle_t mutex = xSemaphoreCreateMutexStatic(&mutexBuffer);
 
+namespace debug {
+int32_t fake = 0;
+}
+
 int32_t raw(const Config &config, size_t medianWidth, TickType_t timeout) {
   configASSERT(medianWidth);
   auto startTick = xTaskGetTickCount();
   if (!xSemaphoreTake(mutex, timeout)) return readErr;
+  // HX711 datasheet "Output settling time", we cannot query the data rate so use the maximum
+  constexpr const uint32_t outputSettlingTime = 400;
+  if (debug::fake) {
+    vTaskDelay(pdMS_TO_TICKS(outputSettlingTime));
+    configASSERT(xSemaphoreGive(mutex));
+    return debug::fake;
+  }
   auto measurementStartTick = xTaskGetTickCount();
   const auto sck = config.clockPin, dt = config.dataPin;
   // poweroff the controller and release the mutex
@@ -27,8 +38,6 @@ int32_t raw(const Config &config, size_t medianWidth, TickType_t timeout) {
   digitalWrite(sck, HIGH);
   delayMicroseconds(64);
   digitalWrite(sck, LOW);
-  // HX711 datasheet "Output settling time", we cannot query the data rate so use the maximum
-  constexpr const uint32_t outputSettlingTime = 400;
   vTaskDelay(pdMS_TO_TICKS(outputSettlingTime));
 
   int32_t reads[medianWidth];
@@ -44,7 +53,7 @@ int32_t raw(const Config &config, size_t medianWidth, TickType_t timeout) {
       }
       // timed out
       release();
-      if (debug) {
+      if (blastic::debug) {
         MSerial serial;
         serial->print("scale: timed out waiting for data, median index ");
         serial->println(i);
@@ -69,7 +78,7 @@ int32_t raw(const Config &config, size_t medianWidth, TickType_t timeout) {
     reads[i] = value;
   }
   release();
-  if (debug >= 2) {
+  if (blastic::debug >= 2) {
     auto endTick = xTaskGetTickCount();
     MSerial serial;
     serial->print("scale::rawMedian:");

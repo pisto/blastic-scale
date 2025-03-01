@@ -22,7 +22,7 @@ int unixTime() { return offsetToUnixTime ? updateRealTimeSeconds() + offsetToUni
 void startSync(const Config &config, bool force) {
   if (!force && lastSyncEpoch && unixTime() - lastSyncEpoch < 24 * 60 * 60) return;
   using namespace wifi;
-  Layer3::backgroundLoop().set(
+  Layer3::background().set(
       [config](uint32_t) {
         Layer3 wifi;
         if (!wifi) return blastic::MSerial()->print("ntpsync: no wifi connection\n"), portMAX_DELAY;

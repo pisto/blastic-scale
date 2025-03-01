@@ -32,7 +32,7 @@ template <> void Config<currentVersion>::defaults() {
            .mode = scale::HX711Mode::A128,
            .calibrations = {// A128 mode by default, calibration parameters that work for me, but not for thee
                             {.tareRawRead = 45527, .weightRawRead = 114810, .weight = 1.56}}};
-  wifi.dhcpTimeout = wifi.disconnectTimeout = 10;
+  wifi.dhcpTimeout = wifi.idleTimeout = 10;
   submit.threshold = 0.05;
   submit.collectionPoint = "BlastPersis";
   submit.collectorName = "BSPers";

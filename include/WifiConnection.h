@@ -28,7 +28,7 @@ public:
     // leave the password empty to connect to an open network
     util::StringBuffer<32> ssid;
     util::StringBuffer<64> password;
-    uint8_t dhcpTimeout, disconnectTimeout;
+    uint8_t dhcpTimeout, idleTimeout;
   };
 
   Layer3();
@@ -37,7 +37,7 @@ public:
   operator bool() const;
   ~Layer3();
 
-  static util::Looper<1024> &backgroundLoop();
+  static util::Looper<1024> &background();
 
 private:
   Layer3(bool);
