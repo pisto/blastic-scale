@@ -71,6 +71,7 @@ Layer3::~Layer3() {
       },
       &disconnectTimerBuff);
   configASSERT(xTimerChangePeriod(disconnectTimer, pdMS_TO_TICKS(config.wifi.idleTimeout * 1000), portMAX_DELAY));
+  ntp::startSync();
 }
 
 Layer3::Layer3() : util::Mutexed<::WiFi>(), backgroundJob(true) {}

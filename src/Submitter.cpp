@@ -319,12 +319,16 @@ void Submitter::loop() [[noreturn]] {
         SDNotice = "CSV open err";
         goto SDEnd;
       }
+      auto epoch = ntp::unixTime();
+      if (!epoch) notice("time unset");
       if (!csv.size()) csv.println(CSVHeader);
       csv.print(config.collectionPoint);
       csv.print(',');
       csv.print(config.collectorName);
       csv.print(',');
       csv.print(plasticName(plastic));
+      csv.print(',');
+      csv.println(epoch);
       csv.print(',');
       csv.println(weight);
       csv.close();

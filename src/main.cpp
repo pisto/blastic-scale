@@ -586,7 +586,7 @@ static void sync(WordSplit &) {
       return;
     }
   }
-  ::ntp::startSync(config.ntp, true);
+  ::ntp::startSync(true);
   MSerial()->print("ntp::sync: started sync\n");
 }
 

@@ -1,9 +1,11 @@
+#include <memory>
+#include "ntp.h"
 #include "blastic.h"
 #include <NTPClient.h>
 
 namespace {
 
-int oldSeenMillis = 0, realTimeSeconds = 0, offsetToUnixTime, lastSyncEpoch;
+int oldSeenMillis = 0, realTimeSeconds = 0, offsetToUnixTime, lastSyncEpoch = 0;
 
 int updateRealTimeSeconds() {
   util::Mutexed<realTimeSeconds> lockedRTS;
@@ -19,11 +21,12 @@ namespace ntp {
 
 int unixTime() { return offsetToUnixTime ? updateRealTimeSeconds() + offsetToUnixTime : 0; }
 
-void startSync(const Config &config, bool force) {
-  if (!force && lastSyncEpoch && unixTime() - lastSyncEpoch < 24 * 60 * 60) return;
+void startSync(bool force) {
+  auto now = unixTime();
+  if (!force && now && now - lastSyncEpoch < 24 * 60 * 60) return;
   using namespace wifi;
   Layer3::background().set(
-      [hostname = String(config.hostname)](uint32_t) {
+      [hostname = String(blastic::config.ntp.hostname)](uint32_t) {
         Layer3 wifi;
         if (!wifi) return blastic::MSerial()->print("ntpsync: no wifi connection\n"), portMAX_DELAY;
         auto udp = std::make_unique<WiFiUDP>();

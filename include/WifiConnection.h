@@ -37,9 +37,9 @@ public:
   operator bool() const;
   ~Layer3();
 
-  static util::Looper<1024> &background();
-
 private:
+  static util::Looper<1024> &background();
+  friend void ::ntp::startSync(bool force);
   const bool backgroundJob;
 };
 

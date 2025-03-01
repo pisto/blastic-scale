@@ -9,6 +9,6 @@ struct Config {
 };
 
 int unixTime();
-void startSync(const Config &config, bool force = false);
+void startSync(bool force = false);
 
 } // namespace ntp
