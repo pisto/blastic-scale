@@ -41,6 +41,13 @@ public:
     return *this;
   }
 
+  bool set(loopFunction &&loop, TickType_t delay = portMAX_DELAY) {
+    auto loopPtr = loop ? new loopFunction(std::move(loop)) : nullptr;
+    if (xQueueSend(queue, &loopPtr, delay)) return true;
+    delete loopPtr;
+    return false;
+  }
+
   operator TaskHandle_t() const { return task; }
 
   ~Looper() { details::looperTerminate(queue, task); }

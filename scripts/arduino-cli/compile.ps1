@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 $PSNativeCommandUseErrorActionPreference = $true
 
 arduino-cli core install arduino:renesas_uno@1.2.2
-arduino-cli lib install SD@1.3.0 ArduinoGraphics@1.1.3 ArduinoHttpClient@0.6.1 R4_Touch@1.1.0 base64@1.3.0
+arduino-cli lib install SD@1.3.0 ArduinoGraphics@1.1.3 ArduinoHttpClient@0.6.1 R4_Touch@1.1.0 base64@1.3.0 NTPClient@3.2.1
 $IncludePath = (Resolve-Path ".\include").Path
 $GitRevMacro = python .\scripts\git_rev_macro.py | Out-String
 $GitRevMacro = $GitRevMacro.Trim()

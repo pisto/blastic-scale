@@ -5,6 +5,8 @@
 #include <ArduinoGraphics.h>
 #include <Arduino_LED_Matrix.h>
 #include <ArduinoHttpClient.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 #include "utils.h"
 #include "SDCard.h"
 
@@ -209,9 +211,19 @@ static constexpr const char userAgent[] = "blastic-scale/" BLASTIC_GIT_COMMIT " 
   Main submitter logic and UI.
 */
 
-const char *const CSVHeader = "collectionPoint,collectorName,type,weight";
+const char *const CSVHeader = "collectionPoint,collectorName,type,epoch,weight";
 
 void Submitter::loop() [[noreturn]] {
+  // initial ntp sync attempt. Delegate connection to background to keep buttons and leds responsive
+  if (strlen(blastic::config.ntp.hostname)) {
+    wifi::Layer3::backgroundLoop() = [](uint32_t) {
+      wifi::Layer3 l3(blastic::config.wifi);
+      ntp::startSync(blastic::config.ntp);
+      return portMAX_DELAY;
+    };
+  }
+
+  // display initialization
   matrix.begin();
   matrix.background(0);
   matrix.stroke(0xFFFFFF);
@@ -255,6 +267,8 @@ void Submitter::loop() [[noreturn]] {
     xTimerStart(buttons::measurementTimer(), portMAX_DELAY);
     gotInput();
     if (action != Action::OK) continue;
+
+    // got action OK, start submission
     auto &config = blastic::config.submit;
     if (!std::strlen(config.collectionPoint)) {
       notice("missing collection point name", 10000);
@@ -273,6 +287,7 @@ void Submitter::loop() [[noreturn]] {
       continue;
     }
 
+    // take median of 10 measurements
     if (debug) MSerial()->print("submitter: start submission\n");
     painter = scroll("...");
     auto weight = scale::weight(blastic::config.scale, 10);
@@ -287,15 +302,20 @@ void Submitter::loop() [[noreturn]] {
       painter = clear();
       if (xTaskNotifyWait(0, -1, nullptr, pdMS_TO_TICKS(200))) break;
     }
+
+    // plastic selection menu
     auto plastic = plasticSelection();
     if (plastic.timedOut) continue;
     painter = scroll(plasticName(plastic), 200, 100, 2);
     xTaskNotifyWait(0, -1, nullptr, pdMS_TO_TICKS(2000));
+
+    // log entry to csv
     const char *SDNotice = nullptr;
     {
       SDCard sd(blastic::config.sdcard.CSPin);
       if (!sd) {
         auto &card = (*sd).*get(util::SDClassBackdoor());
+        // if first command timed out, sd is not connected, so skip logging errors
         if (card.errorCode() != SD_CARD_ERROR_CMD0) {
           MSerial()->print("submitter: failed to open SD card to log the measurement\n");
           SDNotice = "SD card error";
@@ -308,12 +328,16 @@ void Submitter::loop() [[noreturn]] {
         SDNotice = "CSV open err";
         goto SDEnd;
       }
+      auto epoch = ntp::unixTime();
+      if (!epoch) notice("time unset");
       if (!csv.size()) csv.println(CSVHeader);
       csv.print(config.collectionPoint);
       csv.print(',');
       csv.print(config.collectorName);
       csv.print(',');
       csv.print(plasticName(plastic));
+      csv.print(',');
+      csv.println(epoch);
       csv.print(',');
       csv.println(weight);
       csv.close();
@@ -325,20 +349,24 @@ void Submitter::loop() [[noreturn]] {
     }
   SDEnd:
     if (SDNotice) notice(SDNotice);
-    if (!WifiConnection::firmwareCompatible()) {
+
+    // send to google form
+    using namespace wifi;
+    if (!Layer3::firmwareCompatible()) {
       notice("upgrade wifi firmware", 10000);
       continue;
     }
     painter = scroll("sending form...");
     int statusCode;
     {
-      WifiConnection wifi(blastic::config.wifi);
-      if (!wifi) {
+      Layer3 l3(blastic::config.wifi);
+      if (!l3) {
         if (debug) MSerial()->print("submitter: failed to connect to wifi\n");
         notice("wifi error");
         continue;
       }
-      WiFiSSLClient tls;
+      if (strlen(blastic::config.ntp.hostname)) ntp::startSync(blastic::config.ntp);
+      SSLClient tls;
       if (!tls.connect(serverAddress, HttpClient::kHttpsPort)) {
         MSerial()->print("submitter: failed to connect to server\n");
         notice("connect error");
@@ -409,7 +437,7 @@ void Submitter::loop() [[noreturn]] {
 }
 
 Submitter::Submitter(const char *name, UBaseType_t priority)
-    : painter("Painter", priority), task(Submitter::loop, this, name, priority) {}
+    : painter("Painter", (min(configMAX_PRIORITIES - 1, priority + 1))), task(Submitter::loop, this, name, priority) {}
 
 void Submitter::action(Action action) { xTaskNotify(task, uint8_t(action), eSetValueWithOverwrite); }
 

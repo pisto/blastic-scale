@@ -41,7 +41,6 @@ void setup() {
   switch (ioret) {
   case eeprom::IOret::UPGRADED: Serial.print("setup: eeprom saved config converted from older version\n");
   case eeprom::IOret::OK:
-    if (!config.sanitize()) Serial.print("setup: config had to be sanitized, eeprom is likely corrupted\n");
     Serial.print("setup: loaded configuration from eeprom version ");
     Serial.print(configVersion);
     Serial.println();
@@ -196,6 +195,8 @@ static void weight(WordSplit &args) {
 
 namespace wifi {
 
+using namespace ::wifi;
+
 static void status(WordSplit &) {
   uint8_t status;
   util::StringBuffer<12> firmwareVersion;
@@ -243,7 +244,7 @@ static void password(WordSplit &args) {
 }
 
 static void connect(WordSplit &) {
-  if (!WifiConnection::firmwareCompatible()) {
+  if (!Layer3::firmwareCompatible()) {
     MSerial()->print("wifi::connect: bad wifi firmware, need at least version " WIFI_FIRMWARE_LATEST_VERSION "\n");
     return;
   }
@@ -255,7 +256,7 @@ static void connect(WordSplit &) {
   int32_t rssi;
   IPAddress ip, gateway, dns1, dns2;
   {
-    WifiConnection wifi(config.wifi);
+    Layer3 wifi(config.wifi);
     auto status = wifi->status();
     if (status != WL_CONNECTED) {
       MSerial serial;
@@ -289,6 +290,8 @@ static void connect(WordSplit &) {
 
 namespace tls {
 
+using namespace ::wifi;
+
 constexpr const uint16_t defaultTlsPort = 443;
 
 static void ping(WordSplit &args) {
@@ -297,7 +300,7 @@ static void ping(WordSplit &args) {
     MSerial()->print("tls::ping: failed to parse address\n");
     return;
   }
-  if (WifiConnection::ipConnectBroken) {
+  if (Layer3::ipConnectBroken) {
     IPAddress ip;
     if (ip.fromString(address)) {
       MSerial()->print("tls::ping: tls validation is broken as of firmware version " WIFI_FIRMWARE_LATEST_VERSION
@@ -313,11 +316,11 @@ static void ping(WordSplit &args) {
     MSerial()->print("tls::ping: invalid port\n");
     return;
   }
-  if (!WifiConnection::firmwareCompatible()) {
+  if (!Layer3::firmwareCompatible()) {
     MSerial()->print("tls::ping: bad wifi firmware, need at least version " WIFI_FIRMWARE_LATEST_VERSION "\n");
     return;
   }
-  WifiConnection wifi(config.wifi);
+  Layer3 wifi(config.wifi);
   if (!wifi) {
     MSerial()->print("tls::ping: failed to connect to wifi\n");
     return;
@@ -325,7 +328,7 @@ static void ping(WordSplit &args) {
   MSerial()->print("tls::ping: connected to wifi\n");
 
   {
-    blastic::WiFiSSLClient client;
+    SSLClient client;
     if (!client.connect(address, port)) {
       MSerial()->print("tls::ping: failed to connect to server\n");
       return;
@@ -511,6 +514,39 @@ static void probe(WordSplit &) {
 }
 
 } // namespace sd
+
+namespace ntp {
+
+static void epoch(WordSplit &) {
+  int epoch = ::ntp::unixTime();
+  MSerial serial;
+  serial->print("ntp::epoch: ");
+  serial->println(epoch);
+}
+
+static void sync(WordSplit &) {
+  using namespace wifi;
+  if (!Layer3::firmwareCompatible()) {
+    MSerial()->print("ntp::sync: bad wifi firmware, need at least version " WIFI_FIRMWARE_LATEST_VERSION "\n");
+    return;
+  }
+  if (!std::strlen(config.wifi.ssid)) {
+    MSerial()->print("ntp::sync: configure the connection first with wifi::ssid\n");
+    return;
+  }
+  {
+    Layer3 l3(config.wifi);
+    if (!l3) {
+      MSerial()->print("ntp::sync: failed to connect to wifi\n");
+      return;
+    }
+  }
+  ::ntp::startSync(config.ntp, true);
+  MSerial()->print("ntp::sync: started sync\n");
+}
+
+} // namespace ntp
+
 static constexpr const CliCallback callbacks[]{makeCliCallback(version),
                                                makeCliCallback(uptime),
                                                makeCliCallback(debug),
@@ -536,6 +572,8 @@ static constexpr const CliCallback callbacks[]{makeCliCallback(version),
                                                makeCliCallback(eeprom::defaults),
                                                makeCliCallback(eeprom::blank),
                                                makeCliCallback(sd::probe),
+                                               makeCliCallback(ntp::epoch),
+                                               makeCliCallback(ntp::sync),
                                                CliCallback()};
 
 } // namespace cli

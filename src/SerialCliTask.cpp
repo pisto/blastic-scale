@@ -46,18 +46,9 @@ void loop(const SerialCliTaskState &_this, Stream &input, util::MutexedGenerator
     auto oldLen = len;
     // this is non blocking with the serial interface as we used setTimeout(0) on initialization
     len += input.readBytes(inputBuffer + len, maxLen - len);
-    if (oldLen == len) {
-      if (loop) {
-        vTaskDelay(pdMS_TO_TICKS(pollInterval));
-        continue;
-      }
-      if (len) {
-        inputBuffer[len] = '\0';
-        auto output = outputMutexGen.lock();
-        output->print("cli: ignoring leftover bytes after input EOF: ");
-        output->println(inputBuffer);
-      }
-      return;
+    if (oldLen == len && loop) {
+      vTaskDelay(pdMS_TO_TICKS(pollInterval));
+      continue;
     }
     // input may contain the null character, sanitize to a newline
     for (auto c = inputBuffer + oldLen; c < inputBuffer + len; c++) *c = *c ?: '\n';
@@ -67,12 +58,15 @@ void loop(const SerialCliTaskState &_this, Stream &input, util::MutexedGenerator
     while (true) {
       auto lineEnd = strchr(inputBuffer, '\n');
       if (!lineEnd) {
-        if (len == maxLen) {
-          outputMutexGen.lock()->print("cli: buffer overflow while reading input\n");
-          // discard buffer
-          len = 0;
+        if (!loop) lineEnd = inputBuffer + len;
+        else {
+          if (len == maxLen) {
+            outputMutexGen.lock()->print("cli: buffer overflow while reading input\n");
+            // discard buffer
+            len = 0;
+          }
+          break;
         }
-        break;
       }
       // truncate the command line C string at '\n'
       *lineEnd = '\0';
@@ -99,6 +93,7 @@ void loop(const SerialCliTaskState &_this, Stream &input, util::MutexedGenerator
       memmove(inputBuffer, nextLine, leftoverLen);
       len = leftoverLen;
     }
+    if (oldLen == len && !loop) break;
   }
 }
 

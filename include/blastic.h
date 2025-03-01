@@ -5,6 +5,7 @@
 #endif
 
 #include <tuple>
+#include <type_traits>
 
 // environment
 #include <Arduino.h>
@@ -17,6 +18,7 @@
 #include "Buttons.h"
 #include "Submitter.h"
 #include "SDCard.h"
+#include "ntp.h"
 
 namespace blastic {
 
@@ -29,34 +31,38 @@ namespace eeprom {
 
 enum class IOret { OK, ERROR, UPGRADED, NOT_FOUND, UNKONWN_VERSION };
 
-struct Header {
-  static constexpr const uint32_t expectedSignature = ((uint32_t('B') << 8 | 'L') << 8 | 'S') << 8 | 'C',
-                                  currentVersion = 1;
-  uint32_t signature, version;
-};
+template <uint32_t version> struct Config {
 
-template <uint32_t version = Header::currentVersion> struct Config;
-template <> struct Config<Header::currentVersion> {
+  struct Header {
+    static constexpr const uint32_t expectedSignature = ((uint32_t('B') << 8 | 'L') << 8 | 'S') << 8 | 'C';
+    uint32_t signature, Version;
+  } header;
 
-  Header header;
+  // the conversion logic is implemented here, use `constexpr if` comparisons with versionFrom
+  template <uint32_t versionFrom> Config &operator=(const Config<versionFrom> &o);
+
+  template<uint32_t minVersion, typename enabledType> using fromVersion = std::conditional_t<(version >= minVersion), enabledType, char[0]>;
 
   scale::Config scale;
-  WifiConnection::Config wifi;
+  wifi::Layer3::Config wifi;
   blastic::Submitter::Config submit;
   buttons::Config buttons;
-  SDCard::Config sdcard;
+  fromVersion<1, SDCard::Config> sdcard;
+  fromVersion<2, ntp::Config> ntp;
 
   std::tuple<IOret, uint32_t> load();
   IOret save() const;
-  bool sanitize();
+  void sanitize();
   void defaults();
 };
+
+constexpr const uint32_t currentVersion = 2;
 
 extern const uint32_t maxConfigLength;
 
 } // namespace eeprom
 
-using Config = eeprom::Config<>;
+using Config = eeprom::Config<eeprom::currentVersion>;
 
 extern Config config;
 

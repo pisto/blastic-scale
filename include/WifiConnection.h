@@ -6,18 +6,20 @@
 #include <WiFiSSLClient.h>
 #include "Mutexed.h"
 #include "utils.h"
-
-namespace blastic {
+#include "Looper.h"
+#include "ntp.h"
 
 /*
-  WifiConnection represent a connection to a WiFi AP. It acts as a mutex
+  Layer3 represent a connection to a WiFi AP weith routing to the internet. It acts as a mutex
   in relation to the WiFi global object.
 
   The underlying WiFi connection is not destroyed immediately after this
   object goes out of scope, but it is kept around for a configurable timeout.
 */
 
-class WifiConnection : public util::Mutexed<::WiFi> {
+namespace wifi {
+
+class Layer3 : public util::Mutexed<::WiFi> {
 public:
   static const bool ipConnectBroken;
   static bool firmwareCompatible();
@@ -29,17 +31,24 @@ public:
     uint8_t dhcpTimeout, disconnectTimeout;
   };
 
-  WifiConnection(const Config &config);
+  Layer3();
+  Layer3(const Config &config);
   // was the connection successful?
   operator bool() const;
-  ~WifiConnection();
+  ~Layer3();
+
+  static util::Looper<1024> &backgroundLoop();
+
+private:
+  Layer3(bool);
+  const bool skipDisconnectTimer;
 };
 
 /*
   Clients use a pseudo socket system, but the Arduino class never closes it...
   Redefine the WiFiSSLClient type and ensure that the socket is closed on destruction.
 */
-class WiFiSSLClient : public ::WiFiSSLClient {
+class SSLClient : public ::WiFiSSLClient {
 public:
   using ::WiFiSSLClient::WiFiSSLClient;
 
@@ -73,7 +82,7 @@ public:
   */
   virtual int read();
   virtual int read(uint8_t *buf, size_t size);
-  ~WiFiSSLClient() { stop(); }
+  ~SSLClient() { stop(); }
 };
 
-} // namespace blastic
+} // namespace wifi
