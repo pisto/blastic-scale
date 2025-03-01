@@ -393,25 +393,6 @@ void Submitter::loop() [[noreturn]] {
       https->endRequest();
 
       statusCode = https->responseStatusCode();
-      if (debug) {
-        MSerial serial;
-        serial->print("submitter::response: ");
-        serial->println(statusCode);
-        while (https->headerAvailable()) {
-          serial->print("submitter::response: ");
-          serial->print(https->readHeaderName());
-          serial->print(": ");
-          serial->println(https->readHeaderValue());
-        }
-        serial->print("submitter::response: body:\n");
-        constexpr const size_t maxLen = std::min(255, SERIAL_BUFFER_SIZE - 1);
-        std::unique_ptr<char[]> bodyChunk(new char[maxLen]);
-        while (https->available()) {
-          auto len = https->readBytes(bodyChunk.get(), maxLen);
-          serial->write(bodyChunk.get(), len);
-        }
-        serial->println();
-      }
     }
     if (statusCode == 200) notice("ok!");
     else {
