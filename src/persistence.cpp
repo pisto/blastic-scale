@@ -20,7 +20,8 @@ Config<version> &Config<version>::operator=(const Config<versionFrom> &o) {
   submit = o.submit;
   buttons = o.buttons;
   if constexpr (versionFrom >= 1) sdcard = o.sdcard;
-  if constexpr (versionFrom >= 2) ntp = o.ntp;
+  if constexpr (versionFrom >= 2) ntp.hostname = o.ntp.hostname;
+  if constexpr (versionFrom >= 3) ntp.refresh = o.ntp.refresh;
   return *this;
 }
 
@@ -31,7 +32,7 @@ template <> void Config<currentVersion>::defaults() {
            .clockPin = 4,
            .mode = scale::HX711Mode::A128,
            .calibrations = {// A128 mode by default, calibration parameters that work for me, but not for thee
-                            {.tareRawRead = 45527, .weightRawRead = 114810, .weight = 1.56}}};
+                            {{.tareRawRead = 45527, .weightRawRead = 114810, .weight = 1.56}}}};
   wifi.dhcpTimeout = wifi.idleTimeout = 10;
   submit.threshold = 0.05;
   submit.collectionPoint = "BlastPersis";
@@ -63,6 +64,7 @@ template <> void Config<currentVersion>::defaults() {
       .settings = {.div = CTSU_CLOCK_DIV_18, .gain = CTSU_ICO_GAIN_100, .ref_current = 0, .offset = 186, .count = 1}};
   sdcard.CSPin = 10;
   ntp.hostname = "europe.pool.ntp.org";
+  ntp.refresh = 24 * 60 * 60;
 };
 
 namespace {

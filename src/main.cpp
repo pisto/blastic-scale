@@ -249,14 +249,14 @@ static void status(WordSplit &) {
   serial->println(firmwareVersion);
 }
 
-static void timeout(WordSplit &args) {
+static void idle(WordSplit &args) {
   if (auto timeoutString = args.nextWord()) {
     char *timeoutEnd;
-    auto timeout = strtoul(timeoutString, &timeoutEnd, 10);
-    if (timeoutString != timeoutEnd) config.wifi.idleTimeout = timeout;
+    auto idle = strtoul(timeoutString, &timeoutEnd, 10);
+    if (timeoutString != timeoutEnd) config.wifi.idleTimeout = idle;
   }
   MSerial serial;
-  serial->print("wifi::timeout: ");
+  serial->print("wifi::idle: ");
   serial->println(config.wifi.idleTimeout);
 }
 
@@ -607,6 +607,7 @@ static constexpr const CliCallback callbacks[]{makeCliCallback(version),
                                                makeCliCallback(scale::weight),
                                                makeCliCallback(scale::fake),
                                                makeCliCallback(wifi::status),
+                                               makeCliCallback(wifi::idle),
                                                makeCliCallback(wifi::ssid),
                                                makeCliCallback(wifi::password),
                                                makeCliCallback(wifi::connect),

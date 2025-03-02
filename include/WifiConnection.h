@@ -31,13 +31,13 @@ public:
     uint8_t dhcpTimeout, idleTimeout;
   };
 
-  Layer3();
   Layer3(const Config &config);
   // was the connection successful?
   operator bool() const;
   ~Layer3();
 
 private:
+  Layer3();
   static util::Looper<1024> &background();
   friend void ::ntp::startSync(bool force);
   const bool backgroundJob;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <tuple>
+#include <array>
 #include <Arduino.h>
 #include <Arduino_FreeRTOS.h>
 #include "AnnotatedFloat.h"
@@ -20,7 +21,8 @@ struct Config {
     int32_t tareRawRead, weightRawRead;
     float weight;
     operator bool() const { return this->weightRawRead != this->tareRawRead; }
-  } calibrations[3];
+  };
+  std::array<calibration, 3> calibrations;
   auto &getCalibration() { return calibrations[uint8_t(mode)]; }
   auto &getCalibration() const { return calibrations[uint8_t(mode)]; }
 };

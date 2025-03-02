@@ -1,5 +1,6 @@
 #pragma once
 
+#include <type_traits>
 #include <array>
 #include <cstring>
 
@@ -44,5 +45,7 @@ template <typename Tag, typename Tag::type M> struct ClassPrivateMemberBackdoor 
   };                                                                                                                   \
   template struct ClassPrivateMemberBackdoor<class##Backdoor, &class ::member>;                                        \
   }
+
+template<uint32_t version, uint32_t minVersion, typename enabledType> using fromVersion = std::conditional_t<(version >= minVersion), enabledType, char[0]>;
 
 } // namespace util

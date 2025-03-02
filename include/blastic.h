@@ -41,14 +41,15 @@ template <uint32_t version> struct Config {
   // the conversion logic is implemented here, use `constexpr if` comparisons with versionFrom
   template <uint32_t versionFrom> Config &operator=(const Config<versionFrom> &o);
 
-  template<uint32_t minVersion, typename enabledType> using fromVersion = std::conditional_t<(version >= minVersion), enabledType, char[0]>;
+  template <uint32_t minVersion, typename enabledType>
+  using fromVersion = util::fromVersion<version, minVersion, enabledType>;
 
   scale::Config scale;
   wifi::Layer3::Config wifi;
   blastic::Submitter::Config submit;
   buttons::Config buttons;
   fromVersion<1, SDCard::Config> sdcard;
-  fromVersion<2, ntp::Config> ntp;
+  ntp::Config<version> ntp;
 
   std::tuple<IOret, uint32_t> load();
   IOret save() const;
@@ -56,7 +57,7 @@ template <uint32_t version> struct Config {
   void defaults();
 };
 
-constexpr const uint32_t currentVersion = 2;
+constexpr const uint32_t currentVersion = 3;
 
 extern const uint32_t maxConfigLength;
 

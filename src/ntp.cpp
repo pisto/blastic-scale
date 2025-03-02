@@ -23,8 +23,14 @@ int unixTime() { return offsetToUnixTime ? updateRealTimeSeconds() + offsetToUni
 
 void startSync(bool force) {
   auto now = unixTime();
-  if (!force && now && now - lastSyncEpoch < 24 * 60 * 60) return;
+  if (!force && now && now - lastSyncEpoch < blastic::config.ntp.refresh) return;
   using namespace wifi;
+  static StaticTimer_t ntpTimerBuff;
+  static TimerHandle_t ntpTimer =
+      xTimerCreateStatic("ntpRefresh", 1, false, nullptr, [](TimerHandle_t) { startSync(true); }, &ntpTimerBuff);
+  configASSERT(blastic::config.ntp.refresh
+                   ? xTimerChangePeriod(ntpTimer, pdMS_TO_TICKS(blastic::config.ntp.refresh * 1000), portMAX_DELAY)
+                   : xTimerStop(ntpTimer, portMAX_DELAY));
   Layer3::background().set(
       [hostname = String(blastic::config.ntp.hostname)](uint32_t) {
         Layer3 wifi;
@@ -37,6 +43,12 @@ void startSync(bool force) {
         if (!ntp->isTimeSet()) return blastic::MSerial()->print("ntpsync: failed to sync\n"), portMAX_DELAY;
         lastSyncEpoch = ntp->getEpochTime();
         offsetToUnixTime = lastSyncEpoch - updateRealTimeSeconds();
+        // call updateRealTimeSeconds() every day to avoid millis() overflow issues
+        static StaticTimer_t rtcTimerBuff;
+        static TimerHandle_t rtcTimer = xTimerCreateStatic(
+            "rtcRefresh", pdMS_TO_TICKS(60 * 24 * 24 * 1000), true, nullptr,
+            [](TimerHandle_t) { updateRealTimeSeconds(); }, &rtcTimerBuff);
+        configASSERT(xTimerStart(rtcTimer, portMAX_DELAY));
         blastic::MSerial serial;
         serial->print("ntpsync: synced at ");
         serial->println(lastSyncEpoch);
