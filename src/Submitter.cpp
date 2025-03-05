@@ -96,9 +96,9 @@ static util::loopFunction show(float v) {
   int order = -1;
   float iav, fav = modf(av, &iav);
   // get integer part digits in reverse order from units
-  for (; iav >= 1; iav /= 10, order++) {
+  for (uint32_t iiav = iav; iiav >= 1; iiav /= 10, order++) {
     if (integerReverseStr.isFull()) integerReverseStr.read_char();
-    integerReverseStr.store_char('0' + remainder(iav, 10));
+    integerReverseStr.store_char('0' + (iiav % 10));
   }
   std::array<char, digits + 1> str;
   str[digits] = '\0';
