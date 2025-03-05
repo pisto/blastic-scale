@@ -22,15 +22,15 @@ namespace ntp {
 int unixTime() { return offsetToUnixTime ? updateRealTimeSeconds() + offsetToUnixTime : 0; }
 
 void startSync(bool force) {
-  auto now = unixTime();
-  if (!force && now && now - lastSyncEpoch < blastic::config.ntp.refresh) return;
-  using namespace wifi;
   static StaticTimer_t ntpTimerBuff;
   static TimerHandle_t ntpTimer =
-      xTimerCreateStatic("ntpRefresh", 1, false, nullptr, [](TimerHandle_t) { startSync(true); }, &ntpTimerBuff);
+      xTimerCreateStatic("ntpRefresh", 1, false, nullptr, [](TimerHandle_t) { startSync(); }, &ntpTimerBuff);
   configASSERT(blastic::config.ntp.refresh
-                   ? xTimerChangePeriod(ntpTimer, pdMS_TO_TICKS(blastic::config.ntp.refresh * 1000), portMAX_DELAY)
+                   ? xTimerChangePeriod(ntpTimer, pdMS_TO_TICKS((blastic::config.ntp.refresh + 1) * 1000), portMAX_DELAY)
                    : xTimerStop(ntpTimer, portMAX_DELAY));
+  auto now = unixTime();
+  if (!force && blastic::config.ntp.refresh && now && now - lastSyncEpoch < blastic::config.ntp.refresh) return;
+  using namespace wifi;
   Layer3::background().set(
       [hostname = String(blastic::config.ntp.hostname)](uint32_t) {
         Layer3 wifi;

@@ -60,17 +60,17 @@ Layer3::~Layer3() {
       [](TimerHandle_t) {
         background().set(
             [](uint32_t) {
-              Layer3 wifi;
+              MWiFi wifi;
               if (millis() - lastUsage > config.wifi.idleTimeout * 1000) {
                 wifi->end();
-                if (debug) MSerial()->print("wifi::idle: disconnected\n");
+                MSerial()->print("wifi::idle: disconnected\n");
               }
               return portMAX_DELAY;
             },
             0);
       },
       &disconnectTimerBuff);
-  configASSERT(xTimerChangePeriod(disconnectTimer, pdMS_TO_TICKS(config.wifi.idleTimeout * 1000), portMAX_DELAY));
+  configASSERT(xTimerChangePeriod(disconnectTimer, pdMS_TO_TICKS((config.wifi.idleTimeout + 1) * 1000), portMAX_DELAY));
   ntp::startSync();
 }
 
