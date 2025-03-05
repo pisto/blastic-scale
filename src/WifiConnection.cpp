@@ -63,7 +63,7 @@ Layer3::~Layer3() {
               MWiFi wifi;
               if (millis() - lastUsage > config.wifi.idleTimeout * 1000) {
                 wifi->end();
-                MSerial()->print("wifi::idle: disconnected\n");
+                if (debug) MSerial()->print("wifi::idle: disconnected\n");
               }
               return portMAX_DELAY;
             },
