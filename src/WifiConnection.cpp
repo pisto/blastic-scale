@@ -3,6 +3,8 @@
 
 namespace wifi {
 
+uint32_t debug = 0;
+
 using namespace blastic;
 
 const bool Layer3::ipConnectBroken = strcmp(WIFI_FIRMWARE_LATEST_VERSION, "0.4.2") <= 0;
@@ -18,10 +20,12 @@ util::Looper<1024> &Layer3::background() {
 }
 
 Layer3::Layer3(const Config &config) : util::Mutexed<::WiFi>(), backgroundJob(false) {
+  if (debug >= 1) modem.debug(Serial, debug - 1);
   if (!firmwareCompatible()) return;
   constexpr const uint32_t dhcpPollInterval = 100;
   auto &wifi = **this;
   wifi.end();
+  if (!strlen(config.ssid)) return;
   if (wifi.begin(config.ssid, std::strlen(config.password) ? static_cast<const char *>(config.password) : nullptr) !=
       WL_CONNECTED)
     return;
@@ -51,6 +55,7 @@ int SSLClient::read(uint8_t *buf, size_t size) {
 }
 
 Layer3::~Layer3() {
+  modem.noDebug();
   if (backgroundJob) return;
   static int lastUsage;
   lastUsage = millis();
@@ -74,6 +79,8 @@ Layer3::~Layer3() {
   ntp::startSync();
 }
 
-Layer3::Layer3() : util::Mutexed<::WiFi>(), backgroundJob(true) {}
+Layer3::Layer3() : util::Mutexed<::WiFi>(), backgroundJob(true) {
+  if (debug >= 1) modem.debug(Serial, debug - 1);
+}
 
 } // namespace wifi

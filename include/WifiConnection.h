@@ -19,6 +19,8 @@
 
 namespace wifi {
 
+extern uint32_t debug;
+
 class Layer3 : public util::Mutexed<::WiFi> {
 public:
   static const bool ipConnectBroken;

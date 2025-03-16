@@ -389,7 +389,7 @@ static void ping(WordSplit &args) {
     std::unique_ptr<uint8_t[]> tlsInput(new uint8_t[maxLen]);
     constexpr const unsigned int waitingReadInterval = 100;
     while (true) {
-      // this is non blocking as the underlying code may return zero (and available() == 0) while still being connected
+      // this is non blocking as the underlying code may return zero (and available() == 0) while still connected
       auto len = client.read(tlsInput.get(), maxLen);
       if (len < 0) break;
       if (!len) {
