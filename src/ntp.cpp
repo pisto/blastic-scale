@@ -22,34 +22,36 @@ namespace ntp {
 int unixTime() { return offsetToUnixTime ? updateRealTimeSeconds() + offsetToUnixTime : 0; }
 
 void startSync(bool force) {
-  static StaticTimer_t ntpTimerBuff;
-  static TimerHandle_t ntpTimer =
-      xTimerCreateStatic("ntpRefresh", 1, false, nullptr, [](TimerHandle_t) { startSync(); }, &ntpTimerBuff);
-  configASSERT(blastic::config.ntp.refresh
-                   ? xTimerChangePeriod(ntpTimer, pdMS_TO_TICKS((blastic::config.ntp.refresh + 1) * 1000), portMAX_DELAY)
-                   : xTimerStop(ntpTimer, portMAX_DELAY));
+  using namespace blastic;
+  // call updateRealTimeSeconds() every day to avoid millis() overflow issues
+  static StaticTimer_t rtcTimerBuff;
+  static TimerHandle_t rtcTimer = xTimerCreateStatic(
+      "rtcRefresh", pdMS_TO_TICKS(60 * 24 * 24 * 1000), true, nullptr, [](TimerHandle_t) { updateRealTimeSeconds(); },
+      &rtcTimerBuff);
+  configASSERT(xTimerStart(rtcTimer, portMAX_DELAY));
   auto now = unixTime();
-  if (!force && blastic::config.ntp.refresh && now && now - lastSyncEpoch < blastic::config.ntp.refresh) return;
+  if (!strlen(config.ntp.hostname) || (!force && config.ntp.refresh && now && now - lastSyncEpoch < config.ntp.refresh))
+    return;
   using namespace wifi;
   Layer3::background().set(
-      [hostname = String(blastic::config.ntp.hostname)](uint32_t) {
+      [hostname = String(config.ntp.hostname)](uint32_t) {
         Layer3 wifi;
-        if (!wifi) return blastic::MSerial()->print("ntpsync: no wifi connection\n"), portMAX_DELAY;
+        if (!wifi) {
+          MSerial()->print("ntpsync: no wifi connection\n");
+          return portMAX_DELAY;
+        }
         auto udp = std::make_unique<WiFiUDP>();
         auto ntp = std::make_unique<NTPClient>(*udp, hostname.c_str());
         ntp->begin();
         ntp->forceUpdate();
         ntp->end();
-        if (!ntp->isTimeSet()) return blastic::MSerial()->print("ntpsync: failed to sync\n"), portMAX_DELAY;
+        if (!ntp->isTimeSet()) {
+          MSerial()->print("ntpsync: failed to sync\n");
+          return portMAX_DELAY;
+        }
         lastSyncEpoch = ntp->getEpochTime();
         offsetToUnixTime = lastSyncEpoch - updateRealTimeSeconds();
-        // call updateRealTimeSeconds() every day to avoid millis() overflow issues
-        static StaticTimer_t rtcTimerBuff;
-        static TimerHandle_t rtcTimer = xTimerCreateStatic(
-            "rtcRefresh", pdMS_TO_TICKS(60 * 24 * 24 * 1000), true, nullptr,
-            [](TimerHandle_t) { updateRealTimeSeconds(); }, &rtcTimerBuff);
-        configASSERT(xTimerStart(rtcTimer, portMAX_DELAY));
-        blastic::MSerial serial;
+        MSerial serial;
         serial->print("ntpsync: synced at ");
         serial->println(lastSyncEpoch);
         return portMAX_DELAY;

@@ -168,10 +168,6 @@ constexpr const auto idleTimeout = 60000;
 HasTimedOut<Submitter::Action> Submitter::preview() {
   auto prevWeight = util::AnnotatedFloat("n/a");
   for (; millis() - lastInteractionMillis < idleTimeout;) {
-    if (ntpAtBoot && eTaskGetState(*ntpAtBoot) == eSuspended) {
-      delete ntpAtBoot;
-      ntpAtBoot = nullptr;
-    }
     uint32_t cmd;
     if (xTaskNotifyWait(0, -1, &cmd, 0)) return toAction(cmd);
     auto weight = scale::weight(config.scale, 1, pdMS_TO_TICKS(1000));
@@ -412,15 +408,15 @@ void Submitter::loop() [[noreturn]] {
 }
 
 Submitter::Submitter(const char *name, UBaseType_t priority)
-    : painter("Painter", (min(configMAX_PRIORITIES - 1, priority + 1))), task(Submitter::loop, this, name, priority),
-      ntpAtBoot(new util::StaticTask<1024>(
-          []() {
-            {
-              wifi::Layer3 l3(blastic::config.wifi);
-            }
-            vTaskDelay(portMAX_DELAY);
-          },
-          "Painter", tskIDLE_PRIORITY + 1)) {}
+    : painter("Painter", (min(configMAX_PRIORITIES - 1, priority + 1))), task(Submitter::loop, this, name, priority) {
+  wifi::Layer3::background() = [](uint32_t &) {
+    {
+      // probe the wifi to trigger a ntp sync
+      wifi::Layer3(blastic::config.wifi);
+    }
+    return portMAX_DELAY;
+  };
+}
 
 void Submitter::action(Action action) { xTaskNotify(task, uint8_t(action), eSetValueWithOverwrite); }
 

@@ -70,7 +70,6 @@ public:
 protected:
   util::Looper<1024> painter;
   util::StaticTask<4 * 1024> task;
-  util::StaticTask<1024> *ntpAtBoot;
   int lastInteractionMillis;
 
   void gotInput();
