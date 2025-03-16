@@ -204,7 +204,7 @@ static constexpr const struct valueAccessor {
     makeAccessor(config.scale.mode),
 
 #define makeCalibrationAccessors(prefix, lvalue)                                                                       \
-  makeStructFieldAccessor(prefix, lvalue, tareRawRead), makeStructFieldAccessor(prefix, lvalue, weightRawRead),        \
+  makeStructFieldAccessor(prefix, lvalue, tareRead), makeStructFieldAccessor(prefix, lvalue, weightRead),        \
       makeStructFieldAccessor(prefix, lvalue, weight)
     makeCalibrationAccessors("config.scale.calibration", config.scale.getCalibration()),
     makeCalibrationAccessors("config.scale.calibrations.A128",

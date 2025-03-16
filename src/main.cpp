@@ -121,7 +121,7 @@ static void tare(WordSplit &) {
     return;
   }
   auto &calibration = config.scale.getCalibration();
-  calibration.tareRawRead = value;
+  calibration.tareRead = value;
   MSerial serial;
   serial->print("scale::tare: set to raw read value ");
   serial->println(value);
@@ -145,7 +145,7 @@ static void calibrate(WordSplit &args) {
     return;
   }
   auto &calibration = config.scale.getCalibration();
-  calibration.weightRawRead = value, calibration.weight = weight;
+  calibration.weightRead = value, calibration.weight = weight;
   MSerial serial;
   serial->print("scale::calibrate: set to raw read value ");
   serial->println(value);

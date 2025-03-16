@@ -247,7 +247,7 @@ void Submitter::loop() [[noreturn]] {
       notice("tare fail");
     } else {
       auto &calibration = config.scale.getCalibration();
-      calibration.tareRawRead = tare;
+      calibration.tareRead = tare;
       MSerial serial;
       serial->print("submitter: initial tare ");
       serial->println(tare);

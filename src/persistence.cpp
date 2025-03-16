@@ -32,7 +32,7 @@ template <> void Config<currentVersion>::defaults() {
            .clockPin = 4,
            .mode = scale::HX711Mode::A128,
            .calibrations = {// A128 mode by default, calibration parameters that work for me, but not for thee
-                            {{.tareRawRead = 45527, .weightRawRead = 114810, .weight = 1.56}}}};
+                            {{.tareRead = 45527, .weightRead = 114810, .weight = 1.56}}}};
   wifi.dhcpTimeout = wifi.idleTimeout = 10;
   submit.threshold = 0.05;
   submit.collectionPoint = "BlastPersis";
