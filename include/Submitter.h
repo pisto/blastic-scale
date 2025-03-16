@@ -53,14 +53,16 @@ public:
   static constexpr const std::tuple<uint32_t, Submitter::Action> actions[]{
       makeAction(NONE), makeAction(OK), makeAction(NEXT), makeAction(PREVIOUS), makeAction(BACK)};
 
+  struct FormParameters {
+    util::StringBuffer<128> urn;
+    using Param = util::StringBuffer<32>;
+    Param type, collectionPoint, collectorName, weight;
+  };
+
   struct Config {
     float threshold;
     util::StringBuffer<128> collectionPoint, collectorName;
-    struct FormParameters {
-      util::StringBuffer<128> urn;
-      using Param = util::StringBuffer<32>;
-      Param type, collectionPoint, collectorName, weight;
-    } form;
+    FormParameters userForm;
   };
 
   Submitter(const char *name, UBaseType_t priority);

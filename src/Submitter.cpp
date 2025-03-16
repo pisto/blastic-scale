@@ -213,6 +213,16 @@ static constexpr const char userAgent[] = "blastic-scale/" BLASTIC_GIT_COMMIT " 
 
 const char *const CSVHeader = "collectionPoint,collectorName,type,epoch,weight";
 
+static const Submitter::FormParameters blasticForm = []() {
+  Submitter::FormParameters form;
+  form.urn = "docs.google.com/forms/u/0/d/e/1FAIpQLSfmg2pnik2W7wLmmNigjfs4kgNBimxYe5ocRIpuLppBBE35fg/formResponse";
+  form.type = "entry.485899545";
+  form.collectionPoint = "entry.1447667805";
+  form.collectorName = "entry.436217948";
+  form.weight = "entry.1288178639";
+  return form;
+}();
+
 void Submitter::loop() [[noreturn]] {
   // display initialization
   matrix.begin();
@@ -263,18 +273,6 @@ void Submitter::loop() [[noreturn]] {
     auto &config = blastic::config.submit;
     if (!std::strlen(config.collectionPoint)) {
       notice("missing collection point name", 10000);
-      continue;
-    }
-    const char *path = strchr(config.form.urn, '/');
-    Config::FormParameters::Param serverAddress;
-    if (path) serverAddress.strncpy(config.form.urn, path - config.form.urn);
-    else {
-      serverAddress = config.form.urn;
-      path = "/";
-    }
-    if (!std::strlen(config.form.urn) || !std::strlen(config.form.type) || !std::strlen(config.form.collectionPoint) ||
-        !std::strlen(config.form.weight)) {
-      notice("bad form data");
       continue;
     }
 
@@ -348,7 +346,6 @@ void Submitter::loop() [[noreturn]] {
       continue;
     }
     painter = scroll("sending form...");
-    int statusCode;
     {
       Layer3 l3(blastic::config.wifi);
       if (!l3) {
@@ -356,53 +353,103 @@ void Submitter::loop() [[noreturn]] {
         notice("wifi error");
         continue;
       }
-      SSLClient tls;
-      if (!tls.connect(serverAddress, HttpClient::kHttpsPort)) {
-        MSerial()->print("submitter: failed to connect to server\n");
-        notice("connect error");
-        return;
+
+      enum { UNCONFIGURED, ERROR, OK };
+      auto upload = [plastic, weight](const FormParameters &form) {
+        const char *path = strchr(form.urn, '/');
+        FormParameters::Param serverAddress;
+        if (path) serverAddress.strncpy(form.urn, path - form.urn);
+        else {
+          serverAddress = form.urn;
+          path = "/";
+        }
+        if (!std::strlen(form.urn) || !std::strlen(form.type) || !std::strlen(form.collectionPoint) ||
+            !std::strlen(form.weight)) {
+          return std::make_tuple(UNCONFIGURED, 0);
+        }
+
+        SSLClient tls;
+        if (!tls.connect(serverAddress, HttpClient::kHttpsPort)) {
+          MSerial serial;
+          serial->print("submitter: failed to connect to ");
+          serial->println(serverAddress);
+          return std::make_tuple(ERROR, 0);
+        }
+
+        String formData;
+        formData += form.type;
+        formData += '=';
+        formData += uint8_t(plastic.t);
+        formData += '+'; // space
+        formData += plasticName(plastic);
+        formData += '&';
+        formData += form.collectionPoint;
+        formData += '=';
+        formData += URLEncoder.encode(blastic::config.submit.collectionPoint);
+        formData += '&';
+        formData += form.weight;
+        formData += '=';
+        formData += weight;
+        formData += '&';
+        formData += form.collectorName;
+        formData += '=';
+        formData += URLEncoder.encode(
+            std::strlen(blastic::config.submit.collectorName) ? blastic::config.submit.collectorName : userAgent);
+
+        auto https = std::make_unique<HttpClient>(tls, serverAddress, HttpClient::kHttpsPort);
+        https->beginRequest();
+        https->noDefaultRequestHeaders();
+        https->connectionKeepAlive();
+        https->post(path);
+        https->sendHeader("Host", serverAddress);
+        https->sendHeader("User-Agent", userAgent);
+        https->sendHeader("Content-Type", "application/x-www-form-urlencoded");
+        https->sendHeader("Content-Length", formData.length());
+        https->sendHeader("Accept", "*/*");
+        https->beginBody();
+        https->print(formData);
+        https->endRequest();
+
+        auto code = https->responseStatusCode();
+        if (debug || code != 200) {
+          MSerial serial;
+          serial->print("submitter: http status ");
+          serial->println(code);
+        }
+        return std::make_tuple(OK, code);
+      };
+
+      {
+        auto [state, httpCode] = upload(blasticForm);
+        switch (state) {
+        case UNCONFIGURED: notice("bad form data"); break;
+        case ERROR: notice("connect error"); break;
+        case OK:
+          if (httpCode == 200) notice("ok!", 2000);
+          else {
+            std::string errorMsg = "error ";
+            errorMsg += httpCode;
+            notice(std::move(errorMsg));
+          }
+        }
       }
 
-      String formData;
-      formData += config.form.type;
-      formData += '=';
-      formData += uint8_t(plastic.t);
-      formData += '+'; // space
-      formData += plasticName(plastic);
-      formData += '&';
-      formData += config.form.collectionPoint;
-      formData += '=';
-      formData += URLEncoder.encode(config.collectionPoint);
-      formData += '&';
-      formData += config.form.weight;
-      formData += '=';
-      formData += weight;
-      formData += '&';
-      formData += config.form.collectorName;
-      formData += '=';
-      formData += URLEncoder.encode(std::strlen(config.collectorName) ? config.collectorName : userAgent);
-
-      auto https = std::make_unique<HttpClient>(tls, serverAddress, HttpClient::kHttpsPort);
-      https->beginRequest();
-      https->noDefaultRequestHeaders();
-      https->connectionKeepAlive();
-      https->post(path);
-      https->sendHeader("Host", serverAddress);
-      https->sendHeader("User-Agent", userAgent);
-      https->sendHeader("Content-Type", "application/x-www-form-urlencoded");
-      https->sendHeader("Content-Length", formData.length());
-      https->sendHeader("Accept", "*/*");
-      https->beginBody();
-      https->print(formData);
-      https->endRequest();
-
-      statusCode = https->responseStatusCode();
-    }
-    if (statusCode == 200) notice("ok!");
-    else {
-      std::string errorMsg = "error ";
-      errorMsg += statusCode;
-      notice(std::move(errorMsg));
+      painter = scroll("user form...");
+      {
+        auto [state, httpCode] = upload(config.userForm);
+        switch (state) {
+        case UNCONFIGURED: continue;
+        case ERROR: notice("error (user)"); break;
+        case OK:
+          if (httpCode == 200) notice("ok! (user)", 2000);
+          else {
+            std::string errorMsg = "error ";
+            errorMsg += httpCode;
+            errorMsg += " (user)";
+            notice(std::move(errorMsg));
+          }
+        }
+      }
     }
   }
 }

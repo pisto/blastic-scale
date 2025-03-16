@@ -37,11 +37,6 @@ template <> void Config<currentVersion>::defaults() {
   submit.threshold = 0.05;
   submit.collectionPoint = "BlastPersis";
   submit.collectorName = "BSPers";
-  submit.form.urn = "docs.google.com/forms/d/e/1FAIpQLSeI3jofIWqtWghblVPOTO1BtUbE8KmoJsGRJuRAu2ceEMIJFw/formResponse";
-  submit.form.type = "entry.826036805";
-  submit.form.collectionPoint = "entry.458823532";
-  submit.form.collectorName = "entry.649832752";
-  submit.form.weight = "entry.1219969504";
   // OK
   buttons[0] = {
       .pin = 3,
@@ -92,8 +87,8 @@ template <> void Config<currentVersion>::sanitize() {
     if (uint32_t(button.settings.gain) > uint32_t(CTSU_ICO_GAIN_40)) button.settings.gain = defaultButton.settings.gain;
   }
   sanitizeStringBuffers(wifi.ssid, wifi.password, submit.collectionPoint, submit.collectorName,
-                        submit.form.collectionPoint, submit.form.collectorName, submit.form.type, submit.form.urn,
-                        submit.form.weight, ntp.hostname);
+                        submit.userForm.collectionPoint, submit.userForm.collectorName, submit.userForm.type,
+                        submit.userForm.urn, submit.userForm.weight, ntp.hostname);
 }
 
 // leave alone the implementation bits below, they do not need to change across Config version updates

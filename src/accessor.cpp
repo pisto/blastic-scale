@@ -13,6 +13,13 @@ template <typename T> void valuePrinter(const T &field) {
   serial->println(field);
 }
 
+template <size_t size> void valuePrinter(const util::StringBuffer<size> &field) {
+  MSerial serial;
+  serial->print("get: '");
+  serial->print(field);
+  serial->println('\'');
+}
+
 void valuePrinter(const scale::HX711Mode &field) {
   MSerial serial;
   serial->print("get: ");
@@ -114,6 +121,8 @@ template <typename T> void valueParser(WordSplit &args, T &field) {
       [](WordSplit &args) { return valueParser(args, address, ##__VA_ARGS__); })
 #define makeAccessorRO(address) valueAccessor(#address, []() { valuePrinter(address); })
 
+static bool validDigitalPin(uint8_t pin) { return pin <= 13; }
+
 static constexpr const struct valueAccessor {
   using getter = void (*)();
   using setter = void (*)(WordSplit &);
@@ -145,15 +154,21 @@ static constexpr const struct valueAccessor {
     makeCalibrationAccessors("config.scale.calibrations.A64",
                              config.scale.calibrations[uint32_t(scale::HX711Mode::A64)]),
 
-    makeAccessor(config.wifi.idleTimeout),
     makeAccessor(config.wifi.ssid),
     makeAccessor(config.wifi.password),
+    makeAccessor(config.wifi.dhcpTimeout),
+    makeAccessor(config.wifi.idleTimeout),
     makeAccessor(config.submit.threshold, [](float v) { return v > 0; }),
     makeAccessor(config.submit.collectionPoint),
     makeAccessor(config.submit.collectorName),
-    makeAccessor(config.submit.form.urn),
+    makeAccessor(config.submit.userForm.urn),
+    makeAccessor(config.submit.userForm.type),
+    makeAccessor(config.submit.userForm.collectionPoint),
+    makeAccessor(config.submit.userForm.collectorName),
+    makeAccessor(config.submit.userForm.weight),
     makeAccessor(config.ntp.hostname),
     makeAccessor(config.ntp.refresh),
+    makeAccessor(config.sdcard.CSPin, validDigitalPin),
     valueAccessor()};
 
 } // namespace
