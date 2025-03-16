@@ -70,9 +70,10 @@ void loop(const SerialCliTaskState &_this, Stream &input, util::MutexedGenerator
       }
       // truncate the command line C string at '\n'
       *lineEnd = '\0';
-      // interpret \b as backspace
+      // interpret \b as backspace and ignore \r
       auto dst = inputBuffer;
       for (auto src = inputBuffer; src < lineEnd; src++) {
+        if (*src == '\r') continue;
         if (*src != '\b') *dst++ = *src;
         else if (dst > inputBuffer) --dst;
       }
