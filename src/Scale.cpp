@@ -99,8 +99,8 @@ util::AnnotatedFloat weight(const Config &config, size_t medianWidth, TickType_t
   if (!calibration) return weightCal;
   auto value = raw(config, medianWidth, timeout);
   if (value == readErr) return weightErr;
-  return util::AnnotatedFloat(calibration.weight * float(value - calibration.tareRead) /
-                              float(calibration.weightRead - calibration.tareRead));
+  return util::AnnotatedFloat(calibration.calibrationWeight * float(value - calibration.tareRead) /
+                              float(calibration.calibrationRead - calibration.tareRead));
 }
 
 } // namespace scale

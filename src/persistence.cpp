@@ -28,11 +28,8 @@ Config<version> &Config<version>::operator=(const Config<versionFrom> &o) {
 template <> void Config<currentVersion>::defaults() {
   memset(this, 0, sizeof(*this));
   header = {.signature = Header::expectedSignature, .Version = currentVersion};
-  scale = {.dataPin = 5,
-           .clockPin = 4,
-           .mode = scale::HX711Mode::A128,
-           .calibrations = {// A128 mode by default, calibration parameters that work for me, but not for thee
-                            {{.tareRead = 45527, .weightRead = 114810, .weight = 1.56}}}};
+  scale = {.dataPin = 5, .clockPin = 4, .mode = scale::HX711Mode::A128};
+  for (auto &cal : scale.calibrations) cal.calibrationWeight = util::AnnotatedFloat("unc");
   wifi.dhcpTimeout = wifi.idleTimeout = 10;
   submit.threshold = 0.05;
   submit.collectionPoint = "BlastPersis";
@@ -78,8 +75,6 @@ template <> void Config<currentVersion>::sanitize() {
   defaults->defaults();
   // weak sanitization, just make sure we don't get UB (enums out of range, strings without terminators...)
   if (uint8_t(scale.mode) > uint8_t(scale::HX711Mode::A64)) scale.mode = defaults->scale.mode;
-  for (auto &cal : scale.calibrations)
-    if (!isfinite(cal.weight)) cal.weight = 0;
   if (!isfinite(submit.threshold) || submit.threshold < 0) submit.threshold = defaults->submit.threshold;
   for (int i = 0; i < size(buttons); i++) {
     auto &defaultButton = defaults->buttons[i], &button = buttons[i];

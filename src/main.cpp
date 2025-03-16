@@ -145,7 +145,7 @@ static void calibrate(WordSplit &args) {
     return;
   }
   auto &calibration = config.scale.getCalibration();
-  calibration.weightRead = value, calibration.weight = weight;
+  calibration.calibrationRead = value, calibration.calibrationWeight.f = weight;
   MSerial serial;
   serial->print("scale::calibrate: set to raw read value ");
   serial->println(value);

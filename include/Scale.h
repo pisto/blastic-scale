@@ -18,9 +18,9 @@ struct Config {
   uint8_t dataPin, clockPin;
   HX711Mode mode;
   struct calibration {
-    int32_t tareRead, weightRead;
-    float weight;
-    operator bool() const { return this->weightRead != this->tareRead; }
+    int32_t tareRead, calibrationRead;
+    util::AnnotatedFloat calibrationWeight;
+    operator bool() const { return !calibrationWeight.isnan; }
   };
   std::array<calibration, 3> calibrations;
   auto &getCalibration() { return calibrations[uint8_t(mode)]; }

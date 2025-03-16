@@ -39,6 +39,18 @@ void valuePrinter(ctsu_clock_div_t field) {
   serial->println(int(field) * 2 + 2);
 }
 
+void valuePrinter(const util::AnnotatedFloat &field) {
+  MSerial serial;
+  serial->print("get: ");
+  serial->print(field);
+  if (field.isnan) {
+    serial->print(':');
+    char annotation[4];
+    field.getAnnotation(annotation);
+    serial->println(annotation);
+  } else serial->println();
+}
+
 template <size_t size> void valueParser(WordSplit &args, util::StringBuffer<size> &field, auto &&validate) {
   auto value = args.rest(false, false);
   if (!value) {
@@ -178,6 +190,8 @@ template <typename T> void valueParser(WordSplit &args, T &field) {
       #address, []() { valuePrinter(address); },                                                                       \
       [](WordSplit &args) { return valueParser(args, address, ##__VA_ARGS__); })
 #define makeAccessorRO(address) valueAccessor(#address, []() { valuePrinter(address); })
+#define makeStructFieldAccessorRO(prefix, lvalue, field)                                                               \
+  valueAccessor(prefix "." #field, []() { valuePrinter(lvalue.field); })
 #define makeStructFieldAccessor(prefix, lvalue, field, ...)                                                            \
   valueAccessor(                                                                                                       \
       prefix "." #field, []() { valuePrinter(lvalue.field); },                                                         \
@@ -202,10 +216,9 @@ static constexpr const struct valueAccessor {
     makeAccessor(scale::debug::fake),
 
     makeAccessor(config.scale.mode),
-
 #define makeCalibrationAccessors(prefix, lvalue)                                                                       \
-  makeStructFieldAccessor(prefix, lvalue, tareRead), makeStructFieldAccessor(prefix, lvalue, weightRead),        \
-      makeStructFieldAccessor(prefix, lvalue, weight)
+  makeStructFieldAccessorRO(prefix, lvalue, tareRead), makeStructFieldAccessorRO(prefix, lvalue, calibrationRead),     \
+      makeStructFieldAccessorRO(prefix, lvalue, calibrationWeight)
     makeCalibrationAccessors("config.scale.calibration", config.scale.getCalibration()),
     makeCalibrationAccessors("config.scale.calibrations.A128",
                              config.scale.calibrations[uint32_t(scale::HX711Mode::A128)]),

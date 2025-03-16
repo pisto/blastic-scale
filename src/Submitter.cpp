@@ -80,10 +80,10 @@ static util::loopFunction scroll(std::string &&str, unsigned int initialDelay = 
   example, 0.00543 is shown as "543" with 3 dots to the left.
 */
 
-static util::loopFunction show(float v) {
-  if (isnan(v)) {
+static util::loopFunction show(util::AnnotatedFloat v) {
+  if (v.isnan) {
     std::string str("nan:   ");
-    util::AnnotatedFloat(v).getAnnotation(str.data() + 4);
+    v.getAnnotation(str.data() + 4);
     return scroll(std::move(str));
   }
   if (isinf(v)) return scroll(v > 0 ? "+inf" : "-inf");

@@ -16,29 +16,22 @@ union AnnotatedFloat {
     uint32_t annotation : 22, isnan : 1, exponent : 8, sign : 1;
   };
 
-  AnnotatedFloat() {}
+  AnnotatedFloat() = default;
   explicit constexpr AnnotatedFloat(float f) : f(f) {}
 
-  explicit AnnotatedFloat(const char (&msg)[4]) : f(NAN) {
+  explicit AnnotatedFloat(const char *msg) : f(NAN) {
     annotation = 0;
     for (int i = 0; i < 3 && msg[i]; i++) annotation |= msg[i] << (i * 8);
   }
 
   void getAnnotation(char *msg) const {
-    for (uint32_t annotation = std::isnan(f) ? this->annotation : 0, i = 0; i < 3; i++, annotation >>= 8)
+    for (uint32_t annotation = isnan ? this->annotation : 0, i = 0; i < 3; i++, annotation >>= 8)
       msg[i] = annotation;
     msg[3] = 0;
   }
 
-  AnnotatedFloat &setAnnotation(const char (&msg)[4]) {
-    if (!std::isnan(f)) return *this;
-    annotation = 0;
-    for (uint32_t i = 0, j = 0; i < 3; i++, msg[j] ? j++ : 0) annotation |= msg[j] << (i * 8);
-    return *this;
-  }
-
   bool operator==(const AnnotatedFloat &o) const {
-    if (std::isnan(f) && std::isnan(o.f)) return annotation == o.annotation;
+    if (isnan && o.isnan) return annotation == o.annotation;
     return f == o.f;
   }
   bool operator!=(const AnnotatedFloat &o) const { return !(*this == o); }
