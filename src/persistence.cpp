@@ -91,7 +91,7 @@ template <> void Config<currentVersion>::sanitize() {
     if (uint32_t(button.settings.div) > uint32_t(CTSU_CLOCK_DIV_64)) button.settings.div = defaultButton.settings.div;
     if (uint32_t(button.settings.gain) > uint32_t(CTSU_ICO_GAIN_40)) button.settings.gain = defaultButton.settings.gain;
   }
-  sanitizeStringBuffers(wifi.ssid, wifi.password, submit.collectionPoint, submit.collectionPoint, submit.collectorName,
+  sanitizeStringBuffers(wifi.ssid, wifi.password, submit.collectionPoint, submit.collectorName,
                         submit.form.collectionPoint, submit.form.collectorName, submit.form.type, submit.form.urn,
                         submit.form.weight, ntp.hostname);
 }

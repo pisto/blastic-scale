@@ -27,9 +27,6 @@ struct Config {
   auto &getCalibration() const { return calibrations[uint8_t(mode)]; }
 };
 
-#define makeModeHash(m) std::make_tuple(util::murmur3_32(#m), HX711Mode::m)
-static constexpr const std::tuple<uint32_t, HX711Mode> modeHashes[]{makeModeHash(A128), makeModeHash(B),
-                                                                    makeModeHash(A64)};
 #define makeModeString(m) #m
 static constexpr const char *modeStrings[]{makeModeString(A128), makeModeString(B), makeModeString(A64)};
 

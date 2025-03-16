@@ -74,23 +74,6 @@ static void uptime(WordSplit &) {
   serial->print("s\n");
 }
 
-static void version(WordSplit &ws) {
-  MSerial serial;
-  serial->print("version: ");
-  serial->println(blastic::version);
-  uptime(ws);
-}
-
-static void debug(WordSplit &args) {
-  auto arg = args.nextWord() ?: "0";
-  blastic::debug = atoi(arg);
-  if (blastic::debug >= 2) modem.debug(Serial, 2);
-  else modem.noDebug();
-  MSerial serial;
-  serial->print("debug: ");
-  serial->println(blastic::debug);
-}
-
 #if (configUSE_TRACE_FACILITY == 1)
 
 static void tasks(WordSplit &) {
@@ -131,24 +114,6 @@ using namespace blastic::scale;
 
 constexpr const uint32_t scaleCliTimeout = 2000, scaleCliMaxMedianWidth = 16;
 
-static void mode(WordSplit &args) {
-  auto modeStr = args.nextWord();
-  if (!modeStr) {
-    MSerial()->print("scale::mode: missing mode argument\n");
-    return;
-  }
-  auto hash = util::murmur3_32(modeStr);
-  for (auto mode : modeHashes) {
-    if (std::get<uint32_t>(mode) != hash) continue;
-    config.scale.mode = std::get<HX711Mode>(mode);
-    MSerial serial;
-    serial->print("scale::mode: mode set to ");
-    serial->println(modeStr);
-    return;
-  }
-  MSerial()->print("scale::mode: mode not found\n");
-}
-
 static void tare(WordSplit &) {
   auto value = raw(config.scale, scaleCliMaxMedianWidth, pdMS_TO_TICKS(scaleCliTimeout));
   if (value == readErr) {
@@ -186,20 +151,6 @@ static void calibrate(WordSplit &args) {
   serial->println(value);
 }
 
-static void configuration(WordSplit &) {
-  auto modeString = modeStrings[uint32_t(config.scale.mode)];
-  auto &calibration = config.scale.getCalibration();
-  MSerial serial;
-  serial->print("scale::configuration: mode ");
-  serial->print(modeString);
-  serial->print(" tareRawRead weightRawRead weight ");
-  serial->print(calibration.tareRawRead);
-  serial->print(' ');
-  serial->print(calibration.weightRawRead);
-  serial->print(' ');
-  serial->println(calibration.weight);
-}
-
 static void raw(WordSplit &args) {
   auto medianWidthArg = args.nextWord();
   auto medianWidth = min(max(1, medianWidthArg ? atoi(medianWidthArg) : 1), scaleCliMaxMedianWidth);
@@ -218,14 +169,6 @@ static void weight(WordSplit &args) {
   if (value == weightCal) serial->print("uncalibrated\n");
   else if (value == weightErr) serial->print("HX711 error\n");
   else serial->println(value);
-}
-
-static void fake(WordSplit &args) {
-  auto fake = args.nextWord();
-  if (fake) scale::debug::fake = atoi(fake);
-  MSerial serial;
-  serial->print("scale::fake: ");
-  serial->println(scale::debug::fake);
 }
 
 } // namespace scale
@@ -249,44 +192,9 @@ static void status(WordSplit &) {
   serial->println(firmwareVersion);
 }
 
-static void idle(WordSplit &args) {
-  if (auto timeoutString = args.nextWord()) {
-    char *timeoutEnd;
-    auto idle = strtoul(timeoutString, &timeoutEnd, 10);
-    if (timeoutString != timeoutEnd) config.wifi.idleTimeout = idle;
-  }
-  MSerial serial;
-  serial->print("wifi::idle: ");
-  serial->println(config.wifi.idleTimeout);
-}
-
-static void ssid(WordSplit &args) {
-  auto ssid = args.rest(true, true);
-  if (ssid) {
-    config.wifi.ssid = ssid;
-    memset(config.wifi.password, 0, sizeof(config.wifi.password));
-  }
-  MSerial serial;
-  serial->print("wifi::ssid: ");
-  if (std::strlen(config.wifi.ssid)) serial->println(config.wifi.ssid);
-  else serial->print("<none>\n");
-}
-
-static void password(WordSplit &args) {
-  if (auto password = args.rest(false, false)) config.wifi.password = password;
-  MSerial serial;
-  serial->print("wifi::password: ");
-  if (std::strlen(config.wifi.password)) serial->println(config.wifi.password);
-  else serial->print("<none>\n");
-}
-
 static void connect(WordSplit &) {
   if (!Layer3::firmwareCompatible()) {
     MSerial()->print("wifi::connect: bad wifi firmware, need at least version " WIFI_FIRMWARE_LATEST_VERSION "\n");
-    return;
-  }
-  if (!std::strlen(config.wifi.ssid)) {
-    MSerial()->print("wifi::connect: configure the connection first with wifi::ssid\n");
     return;
   }
   uint8_t bssid[6];
@@ -407,55 +315,6 @@ static void ping(WordSplit &args) {
 
 namespace submit {
 
-static void threshold(WordSplit &args) {
-  if (auto thresholdString = args.nextWord()) {
-    char *thresholdEnd;
-    auto threshold = strtof(thresholdString, &thresholdEnd);
-    if (thresholdString != thresholdEnd) config.submit.threshold = threshold;
-  }
-  MSerial serial;
-  serial->print("submit::threshold: ");
-  serial->println(config.submit.threshold, 3);
-}
-
-static void collectionPoint(WordSplit &args) {
-  if (auto collectionPoint = args.rest()) config.submit.collectionPoint = collectionPoint;
-  MSerial serial;
-  serial->print("submit::collectionPoint: ");
-  if (std::strlen(config.submit.collectionPoint)) {
-    serial->print('\'');
-    serial->print(config.submit.collectionPoint);
-    serial->print("\'\n");
-  } else serial->print("<none>\n");
-}
-
-static void collectorName(WordSplit &args) {
-  if (auto collectorName = args.rest()) config.submit.collectorName = collectorName;
-  MSerial serial;
-  serial->print("submit::collectorName: ");
-  if (std::strlen(config.submit.collectorName)) {
-    serial->print('\'');
-    serial->print(config.submit.collectorName);
-    serial->print("\'\n");
-  } else serial->print("<none>\n");
-}
-
-static void urn(WordSplit &args) {
-  auto urn = args.nextWord();
-  if (!urn) {
-    MSerial()->print("submit::urn: missing urn\n");
-    return;
-  }
-  if (strstr(urn, "https://") == urn || strstr(urn, "http://") == urn) {
-    MSerial()->print("submit::urn: specify the urn argument without http:// or https://\n");
-    return;
-  }
-  config.submit.collectionPoint = urn;
-  MSerial serial;
-  serial->print("submit::urn: collection point ");
-  serial->println(config.submit.form.urn);
-}
-
 static void action(WordSplit &args) {
   auto actionStr = args.nextWord();
   if (!actionStr) MSerial()->print("submit::action: missing command argument\n");
@@ -554,14 +413,6 @@ static void probe(WordSplit &) {
 
 namespace ntp {
 
-static void hostname(WordSplit &args) {
-  auto hostname = args.nextWord();
-  if (hostname && *hostname) config.ntp.hostname = hostname;
-  MSerial serial;
-  serial->print("ntp::hostname: ");
-  serial->println(config.ntp.hostname);
-}
-
 static void epoch(WordSplit &) {
   int epoch = ::ntp::unixTime();
   MSerial serial;
@@ -573,10 +424,6 @@ static void sync(WordSplit &) {
   using namespace wifi;
   if (!Layer3::firmwareCompatible()) {
     MSerial()->print("ntp::sync: bad wifi firmware, need at least version " WIFI_FIRMWARE_LATEST_VERSION "\n");
-    return;
-  }
-  if (!std::strlen(config.wifi.ssid)) {
-    MSerial()->print("ntp::sync: configure the connection first with wifi::ssid\n");
     return;
   }
   {
@@ -592,37 +439,28 @@ static void sync(WordSplit &) {
 
 } // namespace ntp
 
-static constexpr const CliCallback callbacks[]{makeCliCallback(version),
-                                               makeCliCallback(uptime),
-                                               makeCliCallback(debug),
+template <bool get> void accessor(WordSplit &args);
+
+static constexpr const CliCallback callbacks[]{makeCliCallback(uptime),
+                                               CliCallback("get", accessor<true>),
+                                               CliCallback("set", accessor<false>),
 #if (configUSE_TRACE_FACILITY == 1)
                                                makeCliCallback(tasks),
 #endif
                                                makeCliCallback(sleep),
-                                               makeCliCallback(scale::mode),
                                                makeCliCallback(scale::tare),
                                                makeCliCallback(scale::calibrate),
-                                               makeCliCallback(scale::configuration),
                                                makeCliCallback(scale::raw),
                                                makeCliCallback(scale::weight),
-                                               makeCliCallback(scale::fake),
                                                makeCliCallback(wifi::status),
-                                               makeCliCallback(wifi::idle),
-                                               makeCliCallback(wifi::ssid),
-                                               makeCliCallback(wifi::password),
                                                makeCliCallback(wifi::connect),
                                                makeCliCallback(tls::ping),
-                                               makeCliCallback(submit::threshold),
-                                               makeCliCallback(submit::collectionPoint),
-                                               makeCliCallback(submit::collectorName),
-                                               makeCliCallback(submit::urn),
                                                makeCliCallback(submit::action),
                                                makeCliCallback(eeprom::save),
                                                CliCallback("eeprom::export", eeprom::export_),
                                                makeCliCallback(eeprom::defaults),
                                                makeCliCallback(eeprom::blank),
                                                makeCliCallback(sd::probe),
-                                               makeCliCallback(ntp::hostname),
                                                makeCliCallback(ntp::epoch),
                                                makeCliCallback(ntp::sync),
                                                CliCallback()};
