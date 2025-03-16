@@ -3,6 +3,8 @@
 #include <type_traits>
 #include <array>
 #include <cstring>
+#include <cm_backtrace/cm_backtrace.h>
+#include <Arduino.h>
 
 namespace util {
 
@@ -46,6 +48,15 @@ template <typename Tag, typename Tag::type M> struct ClassPrivateMemberBackdoor 
   template struct ClassPrivateMemberBackdoor<class##Backdoor, &class ::member>;                                        \
   }
 
-template<uint32_t version, uint32_t minVersion, typename enabledType> using fromVersion = std::conditional_t<(version >= minVersion), enabledType, char[0]>;
+template <uint32_t version, uint32_t minVersion, typename enabledType>
+using fromVersion = std::conditional_t<(version >= minVersion), enabledType, char[0]>;
+
+using StackTrace = uint32_t[CMB_CALL_STACK_MAX_DEPTH];
+
+inline size_t stackTrace(StackTrace &trace) {
+  return cm_backtrace_call_stack(trace, CMB_CALL_STACK_MAX_DEPTH, cmb_get_sp());
+}
+
+void printStackTrace(const StackTrace &trace, size_t depth, Print &p);
 
 } // namespace util
