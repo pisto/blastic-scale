@@ -20,10 +20,23 @@ template <size_t size> void valuePrinter(const util::StringBuffer<size> &field) 
   serial->println('\'');
 }
 
-void valuePrinter(const scale::HX711Mode &field) {
+void valuePrinter(scale::HX711Mode field) {
   MSerial serial;
   serial->print("get: ");
   serial->println(scale::modeStrings[uint32_t(field)]);
+}
+
+void valuePrinter(e_ctsu_ico_gain field) {
+  MSerial serial;
+  serial->print("get: ");
+  int modes[]{100, 66, 50, 40};
+  serial->println(modes[field]);
+}
+
+void valuePrinter(ctsu_clock_div_t field) {
+  MSerial serial;
+  serial->print("get: ");
+  serial->println(int(field) * 2 + 2);
 }
 
 template <size_t size> void valueParser(WordSplit &args, util::StringBuffer<size> &field, auto &&validate) {
@@ -66,6 +79,50 @@ void valueParser(WordSplit &args, scale::HX711Mode &field, auto &&validate) {
   MSerial()->print("set: cannot parse mode value\n");
 }
 
+void valueParser(WordSplit &args, e_ctsu_ico_gain &field, auto &&validate) {
+  char *svalue = args.nextWord(), *svalueEnd;
+  if (!svalue) {
+    MSerial()->print("set: unspecified value\n");
+    return;
+  }
+  auto value = strtoull(svalue, &svalueEnd, 10);
+  if (svalue == svalueEnd) {
+    MSerial()->print("set: cannot parse value\n");
+    return;
+  }
+  switch (value) {
+  case 100: field = CTSU_ICO_GAIN_100; break;
+  case 66: field = CTSU_ICO_GAIN_66; break;
+  case 50: field = CTSU_ICO_GAIN_50; break;
+  case 40: field = CTSU_ICO_GAIN_40; break;
+  default: MSerial()->print("set: invalid gain\n"); return;
+  }
+  MSerial serial;
+  serial->print("set: ok ");
+  serial->println(value);
+}
+
+void valueParser(WordSplit &args, e_ctsu_clock_div &field, auto &&validate) {
+  char *svalue = args.nextWord(), *svalueEnd;
+  if (!svalue) {
+    MSerial()->print("set: unspecified value\n");
+    return;
+  }
+  auto value = strtoull(svalue, &svalueEnd, 10);
+  if (svalue == svalueEnd) {
+    MSerial()->print("set: cannot parse value\n");
+    return;
+  }
+  if (!value || value > 64 || value % 2) {
+    MSerial()->print("set: invalid gain\n");
+    return;
+  }
+  field = ctsu_clock_div_t(value / 2 - 1);
+  MSerial serial;
+  serial->print("set: ok ");
+  serial->println(value);
+}
+
 template <typename T, typename std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
 void valueParser(WordSplit &args, T &field, auto &&validate) {
   char *svalue = args.nextWord(), *svalueEnd;
@@ -77,14 +134,14 @@ void valueParser(WordSplit &args, T &field, auto &&validate) {
     if (svalue == svalueEnd) {
       MSerial()->print("set: cannot parse value\n");
       return false;
-    };
+    }
     return true;
   };
   auto checkValid = [&validate](auto &value) {
     if (!validate(value)) {
       MSerial()->print("set: invalid value\n");
       return false;
-    };
+    }
     return true;
   };
   if constexpr (std::is_floating_point_v<T>) {
@@ -107,6 +164,7 @@ void valueParser(WordSplit &args, T &field, auto &&validate) {
   serial->print("set: ok ");
   serial->println(field);
 }
+
 void valueParser(WordSplit &args, float &field) {
   valueParser(args, field, [](float v) { return isfinite(v); });
 }
@@ -120,6 +178,10 @@ template <typename T> void valueParser(WordSplit &args, T &field) {
       #address, []() { valuePrinter(address); },                                                                       \
       [](WordSplit &args) { return valueParser(args, address, ##__VA_ARGS__); })
 #define makeAccessorRO(address) valueAccessor(#address, []() { valuePrinter(address); })
+#define makeStructFieldAccessor(prefix, lvalue, field, ...)                                                            \
+  valueAccessor(                                                                                                       \
+      prefix "." #field, []() { valuePrinter(lvalue.field); },                                                         \
+      [](WordSplit &args) { return valueParser(args, lvalue.field, ##__VA_ARGS__); })
 
 static bool validDigitalPin(uint8_t pin) { return pin <= 13; }
 
@@ -140,13 +202,10 @@ static constexpr const struct valueAccessor {
     makeAccessor(scale::debug::fake),
 
     makeAccessor(config.scale.mode),
-#define makeCalibrationAccessor(prefix, lvalue, field)                                                                 \
-  valueAccessor(                                                                                                       \
-      prefix "." #field, []() { valuePrinter(lvalue.field); },                                                         \
-      [](WordSplit &args) { return valueParser(args, lvalue.field); })
+
 #define makeCalibrationAccessors(prefix, lvalue)                                                                       \
-  makeCalibrationAccessor(prefix, lvalue, tareRawRead), makeCalibrationAccessor(prefix, lvalue, weightRawRead),        \
-      makeCalibrationAccessor(prefix, lvalue, weight)
+  makeStructFieldAccessor(prefix, lvalue, tareRawRead), makeStructFieldAccessor(prefix, lvalue, weightRawRead),        \
+      makeStructFieldAccessor(prefix, lvalue, weight)
     makeCalibrationAccessors("config.scale.calibration", config.scale.getCalibration()),
     makeCalibrationAccessors("config.scale.calibrations.A128",
                              config.scale.calibrations[uint32_t(scale::HX711Mode::A128)]),
@@ -166,6 +225,18 @@ static constexpr const struct valueAccessor {
     makeAccessor(config.submit.userForm.collectionPoint),
     makeAccessor(config.submit.userForm.collectorName),
     makeAccessor(config.submit.userForm.weight),
+
+#define makeButtonAccessors(prefix, lvalue)                                                                            \
+  makeStructFieldAccessor(prefix, lvalue, pin, validDigitalPin), makeStructFieldAccessor(prefix, lvalue, threshold),   \
+      makeStructFieldAccessor(prefix, lvalue.settings, div), makeStructFieldAccessor(prefix, lvalue.settings, gain),   \
+      makeStructFieldAccessor(prefix, lvalue.settings, ref_current),                                                   \
+      makeStructFieldAccessor(prefix, lvalue.settings, offset),                                                        \
+      makeStructFieldAccessor(prefix, lvalue.settings, count)
+    makeButtonAccessors("config.buttons.OK", config.buttons[0]),
+    makeButtonAccessors("config.buttons.NEXT", config.buttons[1]),
+    makeButtonAccessors("config.buttons.PREVIOUS", config.buttons[2]),
+    makeButtonAccessors("config.buttons.BACK", config.buttons[3]),
+
     makeAccessor(config.ntp.hostname),
     makeAccessor(config.ntp.refresh),
     makeAccessor(config.sdcard.CSPin, validDigitalPin),

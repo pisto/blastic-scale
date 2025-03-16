@@ -39,7 +39,7 @@ TimerHandle_t measurementTimer() {
   return timer;
 }
 
-void reset(const Config &configs) {
+void reload(const Config &configs) {
   auto timer = measurementTimer();
   xTimerStop(timer, portMAX_DELAY);
   stopTouchMeasurement();

@@ -52,7 +52,7 @@ void setup() {
   }
   submitter();
   cliTask();
-  buttons::reset(config.buttons);
+  buttons::reload(config.buttons);
   Serial.print("setup: done\n");
 }
 
@@ -231,15 +231,9 @@ static void connect(WordSplit &) {
   serial->println(dns2);
 }
 
-} // namespace wifi
-
-namespace tls {
-
-using namespace ::wifi;
-
 constexpr const uint16_t defaultTlsPort = 443;
 
-static void ping(WordSplit &args) {
+static void tls(WordSplit &args) {
   auto address = args.nextWord();
   if (!address) {
     MSerial()->print("tls::ping: failed to parse address\n");
@@ -311,7 +305,7 @@ static void ping(WordSplit &args) {
   MSerial()->print("\ntls::ping: connection closed\n");
 }
 
-} // namespace tls
+} // namespace wifi
 
 namespace submit {
 
@@ -331,6 +325,15 @@ static void action(WordSplit &args) {
 }
 
 } // namespace submit
+
+namespace buttons {
+
+static void reload(WordSplit &) {
+  blastic::buttons::reload(blastic::config.buttons);
+  MSerial()->print("buttons::reload: reloaded configuration\n");
+}
+
+} // namespace buttons
 
 namespace eeprom {
 
@@ -356,19 +359,6 @@ static void export_(WordSplit &) {
   }
   encode_base64(input, inputLen, base64);
   MSerial()->println(reinterpret_cast<char *>(base64));
-}
-
-static void defaults(WordSplit &args) {
-  auto defaults = std::make_unique<Config>();
-  defaults->defaults();
-  auto result = defaults->save();
-  MSerial serial;
-  serial->print("eeprom::defaults: ");
-  if (result == blastic::eeprom::IOret::OK) {
-    serial->print("ok ");
-    serial->print(sizeof(defaults));
-    serial->print(" bytes\n");
-  } else serial->print("error\n");
 }
 
 static void blank(WordSplit &args) {
@@ -454,11 +444,11 @@ static constexpr const CliCallback callbacks[]{makeCliCallback(uptime),
                                                makeCliCallback(scale::weight),
                                                makeCliCallback(wifi::status),
                                                makeCliCallback(wifi::connect),
-                                               makeCliCallback(tls::ping),
+                                               makeCliCallback(wifi::tls),
                                                makeCliCallback(submit::action),
+                                               makeCliCallback(buttons::reload),
                                                makeCliCallback(eeprom::save),
                                                CliCallback("eeprom::export", eeprom::export_),
-                                               makeCliCallback(eeprom::defaults),
                                                makeCliCallback(eeprom::blank),
                                                makeCliCallback(sd::probe),
                                                makeCliCallback(ntp::epoch),

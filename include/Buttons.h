@@ -46,7 +46,7 @@ using Config = std::array<DebouncedTouchSensor::Config, n>;
   Reinitialize the R4_Touch library with a new configuration.
 */
 TimerHandle_t measurementTimer();
-void reset(const Config &config);
+void reload(const Config &config);
 
 /*
   This is implemented in src/main.cpp, and hooks the edge callbacks (that runs in an interrupt context) to the Submitter
