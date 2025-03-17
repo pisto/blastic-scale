@@ -20,7 +20,7 @@ struct Config {
   struct calibration {
     int32_t tareRead, calibrationRead;
     util::AnnotatedFloat calibrationWeight;
-    operator bool() const { return !calibrationWeight.isnan; }
+    operator bool() const { return !isnan(calibrationWeight); }
   };
   std::array<calibration, 3> calibrations;
   auto &getCalibration() { return calibrations[uint8_t(mode)]; }

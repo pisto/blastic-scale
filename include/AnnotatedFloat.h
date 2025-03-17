@@ -13,25 +13,25 @@ namespace util {
 union AnnotatedFloat {
   float f;
   struct {
-    uint32_t annotation : 22, isnan : 1, exponent : 8, sign : 1;
+    uint32_t fraction : 22, signaling : 1, exponent : 8, sign : 1;
   };
 
   AnnotatedFloat() = default;
   explicit constexpr AnnotatedFloat(float f) : f(f) {}
 
   explicit AnnotatedFloat(const char *msg) : f(NAN) {
-    annotation = 0;
-    for (int i = 0; i < 3 && msg[i]; i++) annotation |= msg[i] << (i * 8);
+    fraction = 0;
+    for (int i = 0; i < 3 && msg[i]; i++) fraction |= msg[i] << (i * 8);
   }
 
   void getAnnotation(char *msg) const {
-    for (uint32_t annotation = isnan ? this->annotation : 0, i = 0; i < 3; i++, annotation >>= 8)
-      msg[i] = annotation;
+    for (uint32_t fraction = isnan(f) ? this->fraction : 0, i = 0; i < 3; i++, fraction >>= 8)
+      msg[i] = fraction;
     msg[3] = 0;
   }
 
   bool operator==(const AnnotatedFloat &o) const {
-    if (isnan && o.isnan) return annotation == o.annotation;
+    if (isnan(f) && isnan(o.f)) return fraction == o.fraction && signaling == o.signaling && sign == o.sign;
     return f == o.f;
   }
   bool operator!=(const AnnotatedFloat &o) const { return !(*this == o); }

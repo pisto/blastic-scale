@@ -81,11 +81,7 @@ static util::loopFunction scroll(std::string &&str, unsigned int initialDelay = 
 */
 
 static util::loopFunction show(util::AnnotatedFloat v) {
-  if (v.isnan) {
-    std::string str("nan:   ");
-    v.getAnnotation(str.data() + 4);
-    return scroll(std::move(str));
-  }
+  if (isnan(v)) return scroll("nan");
   if (isinf(v)) return scroll(v > 0 ? "+inf" : "-inf");
   float av = abs(v);
   constexpr const float flushThreshold = 0.000001;

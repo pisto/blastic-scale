@@ -43,7 +43,7 @@ void valuePrinter(const util::AnnotatedFloat &field) {
   MSerial serial;
   serial->print("get: ");
   serial->print(field);
-  if (field.isnan) {
+  if (isnan(field)) {
     serial->print(':');
     char annotation[4];
     field.getAnnotation(annotation);
