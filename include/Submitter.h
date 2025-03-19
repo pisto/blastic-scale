@@ -15,13 +15,13 @@ constexpr const plastic plastics[]{plastic::PET, plastic::HDPE, plastic::PVC,  p
 
 constexpr const char *plasticName(plastic p) {
   switch (p) {
-  case plastic::PET: return "Pet";
+  case plastic::PET: return "PET";
   case plastic::HDPE: return "HDPE";
   case plastic::PVC: return "PVC";
   case plastic::LDPE: return "LDPE";
   case plastic::PP: return "PP";
   case plastic::PS: return "PS";
-  default: return "Other";
+  default: return "OTHER";
   }
 }
 

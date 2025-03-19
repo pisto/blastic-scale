@@ -219,6 +219,9 @@ static const Submitter::FormParameters blasticForm = []() {
   return form;
 }();
 
+static constexpr const char *const unicodePlasticSymbols[] = {"%E2%99%B3", "%E2%99%B4", "%E2%99%B5", "%E2%99%B6",
+                                                              "%E2%99%B7", "%E2%99%B8", "%E2%99%B9"};
+
 void Submitter::loop() [[noreturn]] {
   // display initialization
   matrix.begin();
@@ -375,7 +378,7 @@ void Submitter::loop() [[noreturn]] {
         String formData;
         formData += form.type;
         formData += '=';
-        formData += uint8_t(plastic.t);
+        formData += unicodePlasticSymbols[uint8_t(plastic.t) - 1];
         formData += '+'; // space
         formData += plasticName(plastic);
         formData += '&';
