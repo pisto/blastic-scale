@@ -215,6 +215,8 @@ static constexpr const struct valueAccessor {
     makeAccessor(wifi::debug, [](uint32_t debug) { return debug <= 3; }),
     makeAccessor(scale::debug::fake),
 
+    makeAccessor(config.scale.dataPin, validDigitalPin),
+    makeAccessor(config.scale.clockPin, validDigitalPin),
     makeAccessor(config.scale.mode),
 #define makeCalibrationAccessors(prefix, lvalue)                                                                       \
   makeStructFieldAccessorRO(prefix, lvalue, tareRead), makeStructFieldAccessorRO(prefix, lvalue, calibrationRead),     \
@@ -230,7 +232,7 @@ static constexpr const struct valueAccessor {
     makeAccessor(config.wifi.password),
     makeAccessor(config.wifi.dhcpTimeout),
     makeAccessor(config.wifi.idleTimeout),
-    makeAccessor(config.submit.threshold, [](float v) { return v > 0; }),
+    makeAccessor(config.submit.threshold, [](float &v) { return (v = abs(v)) > 0; }),
     makeAccessor(config.submit.collectionPoint),
     makeAccessor(config.submit.collectorName),
     makeAccessor(config.submit.userForm.urn),
