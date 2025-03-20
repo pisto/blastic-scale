@@ -17,7 +17,11 @@ template <uint32_t versionFrom>
 Config<version> &Config<version>::operator=(const Config<versionFrom> &o) {
   scale = o.scale;
   wifi = o.wifi;
-  submit = o.submit;
+  submit.threshold = o.submit.threshold;
+  if constexpr (versionFrom >= 4) submit.skipPPForm = o.submit.skipPPForm;
+  submit.collectionPoint = o.submit.collectionPoint;
+  submit.collectorName = o.submit.collectorName;
+  submit.userForm = submit.userForm;
   buttons = o.buttons;
   if constexpr (versionFrom >= 1) sdcard = o.sdcard;
   if constexpr (versionFrom >= 2) ntp.hostname = o.ntp.hostname;

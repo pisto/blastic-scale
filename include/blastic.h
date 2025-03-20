@@ -46,7 +46,7 @@ template <uint32_t version> struct Config {
 
   scale::Config scale;
   wifi::Layer3::Config wifi;
-  blastic::Submitter::Config submit;
+  blastic::Submitter::Config<version> submit;
   buttons::Config buttons;
   fromVersion<1, SDCard::Config> sdcard;
   ntp::Config<version> ntp;
@@ -57,7 +57,7 @@ template <uint32_t version> struct Config {
   void defaults();
 };
 
-constexpr const uint32_t currentVersion = 3;
+constexpr const uint32_t currentVersion = 4;
 
 extern const uint32_t maxConfigLength;
 

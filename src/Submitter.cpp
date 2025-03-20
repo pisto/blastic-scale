@@ -344,7 +344,7 @@ void Submitter::loop() [[noreturn]] {
       notice("upgrade wifi firmware", 10000);
       continue;
     }
-    painter = scroll("sending form...");
+    painter = scroll(blastic::config.submit.skipPPForm ? "user form =>=>=>" : "form =>=>=>");
     {
       Layer3 l3(blastic::config.wifi);
       if (!l3) {
@@ -418,7 +418,7 @@ void Submitter::loop() [[noreturn]] {
         return std::make_tuple(OK, code);
       };
 
-      {
+      if (!blastic::config.submit.skipPPForm) {
         auto [state, httpCode] = upload(blasticForm);
         switch (state) {
         case UNCONFIGURED: notice("bad form data"); break;
@@ -433,8 +433,8 @@ void Submitter::loop() [[noreturn]] {
         }
       }
 
-      painter = scroll("user form...");
-      {
+      if (strlen(blastic::config.submit.userForm.urn)) {
+        painter = scroll("user form =>=>=>");
         auto [state, httpCode] = upload(config.userForm);
         switch (state) {
         case UNCONFIGURED: continue;
