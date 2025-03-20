@@ -19,8 +19,10 @@ template <size_t size> struct StringBuffer : public std::array<char, size> {
   operator const char *() const { return this->data(); }
 
   StringBuffer &strncpy(const char *src, size_t len = size) {
-    std::strncpy(*this, src, len);
-    (*this)[len < size ? len : size - 1] = 0;
+    auto charsLen = len < size ? len : size - 1;
+    (*this)[charsLen] = 0;
+    __asm volatile ("" ::: "memory");
+    std::strncpy(*this, src, charsLen);
     return *this;
   }
 };
