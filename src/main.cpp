@@ -74,6 +74,12 @@ static void uptime(WordSplit &) {
   serial->print("s\n");
 }
 
+static void echo(WordSplit &args) {
+  MSerial serial;
+  serial->print("echo: ");
+  serial->println(args.rest());
+}
+
 #if (configUSE_TRACE_FACILITY == 1)
 
 static void tasks(WordSplit &) {
@@ -432,6 +438,7 @@ static void sync(WordSplit &) {
 template <bool get> void accessor(WordSplit &args);
 
 static constexpr const CliCallback callbacks[]{makeCliCallback(uptime),
+                                               makeCliCallback(echo),
                                                CliCallback("get", accessor<true>),
                                                CliCallback("set", accessor<false>),
 #if (configUSE_TRACE_FACILITY == 1)
