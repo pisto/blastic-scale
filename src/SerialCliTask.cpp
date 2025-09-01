@@ -42,13 +42,17 @@ void loop(const SerialCliTaskState &_this, Stream &input, util::MutexedGenerator
   char inputBuffer[maxLen + 1];
   size_t len = 0;
   // polling loop
-  while (true) {
+  bool keepreading = true;
+  while (keepreading) {
     auto oldLen = len;
     // this is non blocking with the serial interface as we used setTimeout(0) on initialization
     len += input.readBytes(inputBuffer + len, maxLen - len);
-    if (oldLen == len && loop) {
-      vTaskDelay(pdMS_TO_TICKS(pollInterval));
-      continue;
+    if (oldLen == len) {
+      if (!loop) keepreading = false;
+      else {
+        vTaskDelay(pdMS_TO_TICKS(pollInterval));
+        continue;
+      }
     }
     // input may contain the null character, sanitize to a newline
     for (auto c = inputBuffer + oldLen; c < inputBuffer + len; c++) *c = *c ?: '\n';
@@ -97,11 +101,14 @@ void loop(const SerialCliTaskState &_this, Stream &input, util::MutexedGenerator
       // move bytes after newline to start of buffer, repeat
     shiftLeftBuffer:
       auto nextLine = lineEnd + 1;
+      if (nextLine - inputBuffer >= len) {
+        len = 0;
+        break;
+      }
       auto leftoverLen = len - (nextLine - inputBuffer);
       memmove(inputBuffer, nextLine, leftoverLen);
       len = leftoverLen;
     }
-    if (oldLen == len && !loop) break;
   }
 }
 
