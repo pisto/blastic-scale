@@ -325,7 +325,7 @@ void Submitter::loop() [[noreturn]] {
       csv.print(',');
       csv.print(plasticName(plastic));
       csv.print(',');
-      csv.println(epoch);
+      csv.print(epoch);
       csv.print(',');
       csv.println(weight);
       csv.close();
