@@ -36,6 +36,7 @@ template <> void Config<currentVersion>::defaults() {
   for (auto &cal : scale.calibrations) cal.calibrationWeight = util::AnnotatedFloat("unc");
   wifi.dhcpTimeout = wifi.idleTimeout = 10;
   submit.threshold = 0.05;
+  submit.skipPPForm = true;
   submit.collectionPoint = "BlastPersis";
   submit.collectorName = "BSPers";
   // OK
