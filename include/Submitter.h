@@ -62,6 +62,7 @@ public:
   template <uint32_t version> struct Config {
     float threshold;
     util::fromVersion<version, 4, bool> skipPPForm;
+    util::fromVersion<version, 5, bool> spacesWorkaroundPPForm;
     util::StringBuffer<128> collectionPoint, collectorName;
     FormParameters userForm;
   };

@@ -219,6 +219,7 @@ static const Submitter::FormParameters blasticForm = []() {
   return form;
 }();
 
+// ♳♴♵♶♷♸♹
 static constexpr const char *const unicodePlasticSymbols[] = {"%E2%99%B3", "%E2%99%B4", "%E2%99%B5", "%E2%99%B6",
                                                               "%E2%99%B7", "%E2%99%B8", "%E2%99%B9"};
 
@@ -379,7 +380,10 @@ void Submitter::loop() [[noreturn]] {
         formData += form.type;
         formData += '=';
         formData += unicodePlasticSymbols[uint8_t(plastic.t) - 1];
-        formData += '+'; // space
+        // workaround for wrongly formatted entries (only ♶LDPE, ♷PP, ♸PS)
+        if (blastic::config.submit.spacesWorkaroundPPForm && plastic.t != plastic::LDPE && plastic.t != plastic::PP &&
+            plastic.t != plastic::PS && form.urn == blasticForm.urn)
+          formData += '+'; // space
         formData += plasticName(plastic);
         formData += '&';
         formData += form.collectionPoint;

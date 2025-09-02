@@ -19,6 +19,7 @@ Config<version> &Config<version>::operator=(const Config<versionFrom> &o) {
   wifi = o.wifi;
   submit.threshold = o.submit.threshold;
   if constexpr (versionFrom >= 4) submit.skipPPForm = o.submit.skipPPForm;
+  if constexpr (versionFrom >= 5) submit.spacesWorkaroundPPForm = o.submit.spacesWorkaroundPPForm;
   submit.collectionPoint = o.submit.collectionPoint;
   submit.collectorName = o.submit.collectorName;
   submit.userForm = submit.userForm;
@@ -36,7 +37,7 @@ template <> void Config<currentVersion>::defaults() {
   for (auto &cal : scale.calibrations) cal.calibrationWeight = util::AnnotatedFloat("unc");
   wifi.dhcpTimeout = wifi.idleTimeout = 10;
   submit.threshold = 0.05;
-  submit.skipPPForm = true;
+  submit.skipPPForm = submit.spacesWorkaroundPPForm = true;
   submit.collectionPoint = "BlastPersis";
   submit.collectorName = "BSPers";
   // OK

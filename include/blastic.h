@@ -57,7 +57,7 @@ template <uint32_t version> struct Config {
   void defaults();
 };
 
-constexpr const uint32_t currentVersion = 4;
+constexpr const uint32_t currentVersion = 5;
 
 extern const uint32_t maxConfigLength;
 

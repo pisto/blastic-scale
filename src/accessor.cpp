@@ -234,6 +234,7 @@ static constexpr const struct valueAccessor {
     makeAccessor(config.wifi.idleTimeout),
     makeAccessor(config.submit.threshold, [](float &v) { return (v = abs(v)) > 0; }),
     makeAccessor(config.submit.skipPPForm),
+    makeAccessor(config.submit.spacesWorkaroundPPForm),
     makeAccessor(config.submit.collectionPoint),
     makeAccessor(config.submit.collectorName),
     makeAccessor(config.submit.userForm.urn),
