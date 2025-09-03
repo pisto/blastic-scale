@@ -381,8 +381,8 @@ void Submitter::loop() [[noreturn]] {
         formData += '=';
         formData += unicodePlasticSymbols[uint8_t(plastic.t) - 1];
         // workaround for wrongly formatted entries (only ♶LDPE, ♷PP, ♸PS)
-        if (blastic::config.submit.spacesWorkaroundPPForm && plastic.t != plastic::LDPE && plastic.t != plastic::PP &&
-            plastic.t != plastic::PS && form.urn == blasticForm.urn)
+        if (form.urn != blasticForm.urn || !blastic::config.submit.spacesWorkaroundPPForm ||
+            (plastic.t != plastic::LDPE && plastic.t != plastic::PP && plastic.t != plastic::PS))
           formData += '+'; // space
         formData += plasticName(plastic);
         formData += '&';
