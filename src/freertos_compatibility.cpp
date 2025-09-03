@@ -74,7 +74,7 @@ extern "C" void __wrap___malloc_unlock(_reent *) {
   Trace all failed allocations.
 */
 
-void vApplicationMallocFailedHook() { configASSERT(false && "pvPortMalloc() failed"); }
+void vApplicationMallocFailedHook() { configASSERT(!"pvPortMalloc() failed"); }
 
 extern "C" void *__real__malloc_r(struct _reent *, size_t);
 extern "C" void *__wrap__malloc_r(struct _reent *r, size_t s) {

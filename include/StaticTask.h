@@ -20,9 +20,9 @@ public:
   static_assert(StackSize >= sizeof(StackType_t) * configMINIMAL_STACK_SIZE);
 
   StaticTask_t taskBuffer;
-  StackType_t stack[StackSize / sizeof(StackType_t) + !!(StackSize % sizeof(StackType_t))];
+  StackType_t stack[(StackSize + sizeof(StackType_t) - 1) / sizeof(StackType_t)];
 
-  StaticTask() : handle(nullptr) {}
+  StaticTask() = default;
 
   template <typename ArgType>
   StaticTask(TaskFunction_t taskFunction, ArgType arg, const char *name, UBaseType_t priority = tskIDLE_PRIORITY + 1) {
